@@ -1,0 +1,4281 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Her Şey Sensin</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Her Şey Sensin">
+
+    <!-- OneSignal SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+    <!-- Google Fonts & Confetti -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Leaflet Harita Kütüphanesi -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <style>
+        :root {
+            --bg: #08080B;
+            --card-bg: rgba(20, 20, 26, 0.7);
+            --card-border: rgba(212, 175, 55, 0.22);
+            --gold: #D4AF37;
+            --gold-light: #F7E7CE;
+            --gold-gradient: linear-gradient(135deg, #F9F1D6 0%, #D4AF37 50%, #996515 100%);
+            --text-muted: #8E8E93;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.12) 0%, transparent 60%),
+                radial-gradient(circle at 50% 60%, rgba(255, 90, 120, 0.05) 0%, transparent 50%);
+            color: #FFFFFF;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 95px 16px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            animation: fadeInTab 0.22s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        @keyframes fadeInTab {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 420px;
+            background: rgba(14, 14, 18, 0.94);
+            border-top: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+            z-index: 1000;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 6px 14px;
+            border-radius: 14px;
+        }
+
+        .nav-item.active {
+            color: var(--gold);
+            background: rgba(212, 175, 55, 0.12);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 19px;
+            transition: transform 0.2s;
+        }
+
+        .nav-item.active .nav-icon {
+            transform: scale(1.15);
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(18, 18, 23, 0.75);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 10px 14px;
+            backdrop-filter: blur(15px);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2A2415, #14120A);
+            border: 1.5px solid var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .user-avatar:active {
+            transform: scale(0.9);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+        }
+
+        .user-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-tag {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #34C759;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #34C759;
+            box-shadow: 0 0 6px #34C759;
+        }
+
+        .welcome-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #F7E7CE;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.92);
+            border-color: var(--gold);
+        }
+
+        .header-section {
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        .couple-names {
+            font-size: 11px;
+            letter-spacing: 4px;
+            font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .main-title {
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            font-weight: 700;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .sub-quote {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 400;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 22px 18px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+            position: relative;
+        }
+
+        .card-header-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .card-tag {
+            font-size: 11px;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-date-badge {
+            font-size: 11px;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+
+        .timer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .timer-box {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 12px 4px;
+            text-align: center;
+        }
+
+        .timer-value {
+            font-family: 'Cinzel', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #FFFFFF;
+            display: block;
+            line-height: 1.1;
+        }
+
+        .timer-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .heartbeat-bar {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .heartbeat-title {
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .heartbeat-val {
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            color: #FF6B8B;
+            letter-spacing: 0.5px;
+        }
+
+        .telepati-card {
+            text-align: center;
+            padding: 26px 20px 22px 20px;
+        }
+
+        .telepati-title {
+            font-family: 'Cinzel', serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFFFFF;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .thought-btn-wrapper {
+            margin: 22px auto 16px auto;
+            width: 140px;
+            height: 140px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .thought-btn-glow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.35) 0%, transparent 70%);
+            animation: pulse-glow 3s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                transform: scale(0.95);
+                opacity: 0.4;
+            }
+
+            50% {
+                transform: scale(1.15);
+                opacity: 0.85;
+            }
+        }
+
+        .thought-btn {
+            width: 124px;
+            height: 124px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #221D16 0%, #100E0A 100%);
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.25), inset 0 0 20px rgba(212, 175, 55, 0.15);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            z-index: 2;
+        }
+
+        .thought-btn:active {
+            transform: scale(0.90);
+            box-shadow: 0 0 45px rgba(212, 175, 55, 0.7);
+        }
+
+        .heart-icon {
+            font-size: 28px;
+            filter: drop-shadow(0 0 10px rgba(255, 107, 139, 0.6));
+        }
+
+        .thought-btn-text {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--gold);
+            text-transform: uppercase;
+        }
+
+        .ritual-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .ritual-btn {
+            flex: 1;
+            max-width: 150px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 14px;
+            padding: 10px 12px;
+            color: #F7E7CE;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ritual-btn:active {
+            transform: scale(0.95);
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--gold);
+        }
+
+        .telepati-pill {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #E0E0E0;
+        }
+
+        .total-count {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .touch-card {
+            text-align: center;
+            background: linear-gradient(180deg, rgba(22, 20, 28, 0.7) 0%, rgba(14, 13, 18, 0.8) 100%);
+        }
+
+        .touch-interactive-box {
+            margin: 18px auto 14px auto;
+            width: 130px;
+            height: 130px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .touch-ring-anim {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px dashed rgba(212, 175, 55, 0.4);
+            animation: spin-slow 12s linear infinite;
+            transition: all 0.3s;
+            pointer-events: none !important;
+            z-index: 1;
+        }
+
+        @keyframes spin-slow {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .touch-button {
+            position: relative;
+            z-index: 10;
+            width: 108px;
+            height: 108px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2A2415 0%, #12100B 100%);
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.25);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            transition: all 0.2s;
+        }
+
+        .touch-button * {
+            pointer-events: none;
+        }
+
+        .touch-button.active-hold {
+            transform: scale(0.92);
+            box-shadow: 0 0 45px rgba(255, 107, 139, 0.8), inset 0 0 25px rgba(212, 175, 55, 0.5);
+            border-color: #FF6B8B;
+            background: radial-gradient(circle, #3D1C24 0%, #1A0D10 100%);
+        }
+
+        .touch-status-box {
+            font-size: 12px;
+            color: #E0E0E0;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 6px;
+        }
+
+        #memoryMap .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%);
+        }
+
+        .leaflet-bar a {
+            background-color: #14141A !important;
+            color: #D4AF37 !important;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2) !important;
+        }
+
+        .leaflet-bar {
+            border: 1px solid rgba(212, 175, 55, 0.3) !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6) !important;
+        }
+
+        .map-card {
+            padding: 20px 16px;
+        }
+
+        #memoryMap {
+            width: 100%;
+            height: 360px;
+            border-radius: 18px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            z-index: 5;
+        }
+
+        .map-controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .map-help-text {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .map-add-pin-btn {
+            background: var(--gold-gradient);
+            border: none;
+            border-radius: 14px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .map-add-pin-btn:active {
+            transform: scale(0.94);
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: rgba(18, 18, 24, 0.96) !important;
+            color: #FFFFFF !important;
+            border: 1px solid var(--gold) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 15px rgba(212, 175, 55, 0.3) !important;
+            padding: 6px !important;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(18, 18, 24, 0.96) !important;
+            border: 1px solid var(--gold) !important;
+        }
+
+        .memory-popup {
+            text-align: center;
+            padding: 4px 6px;
+            min-width: 195px;
+        }
+
+        .memory-popup-title {
+            font-family: 'Cinzel', serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #F7E7CE;
+            margin-bottom: 4px;
+        }
+
+        .memory-popup-date {
+            font-size: 10px;
+            color: var(--gold);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .memory-popup-note {
+            font-size: 12px;
+            font-style: italic;
+            color: #E0E0E0;
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+
+        .memory-popup-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 8px;
+            margin-top: 6px;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .memory-delete-btn {
+            background: rgba(255, 107, 139, 0.12);
+            border: 1px solid rgba(255, 107, 139, 0.3);
+            border-radius: 8px;
+            color: #FF6B8B;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .memory-delete-btn:active {
+            transform: scale(0.92);
+        }
+
+        .map-search-wrapper {
+            position: relative;
+            margin-bottom: 12px;
+            z-index: 20;
+        }
+
+        .map-search-box {
+            display: flex;
+            align-items: center;
+            background: rgba(14, 14, 18, 0.85);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 14px;
+            padding: 4px 12px;
+            gap: 8px;
+            transition: all 0.25s;
+        }
+
+        .map-search-box:focus-within {
+            border-color: var(--gold);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+        }
+
+        .map-search-icon {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .map-search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #FFFFFF;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            padding: 6px 0;
+        }
+
+        .map-search-input::placeholder {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .map-search-clear-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            display: none;
+            padding: 4px;
+        }
+
+        .map-search-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: rgba(18, 18, 24, 0.98);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 14px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-result-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            text-align: left;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-item:hover,
+        .search-result-item:active {
+            background: rgba(212, 175, 55, 0.12);
+        }
+
+        .search-result-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #F7E7CE;
+        }
+
+        .search-result-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .watch-card {
+            background: linear-gradient(180deg, rgba(20, 18, 28, 0.75) 0%, rgba(12, 12, 16, 0.85) 100%);
+            padding: 20px 16px;
+        }
+
+        .watch-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .watch-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 14px;
+            padding: 10px 14px;
+            color: #FFFFFF;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .watch-input:focus {
+            border-color: var(--gold);
+        }
+
+        .watch-load-btn {
+            background: var(--gold-gradient);
+            border: none;
+            border-radius: 14px;
+            padding: 0 16px;
+            font-weight: 700;
+            font-size: 13px;
+            color: #000;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .watch-load-btn:active {
+            transform: scale(0.94);
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 18px;
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.1);
+            margin-bottom: 10px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        #syncPlayer {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .video-wrapper.pip-floating {
+            position: fixed !important;
+            bottom: 85px !important;
+            right: 14px !important;
+            width: 165px !important;
+            height: 96px !important;
+            aspect-ratio: unset !important;
+            z-index: 1500 !important;
+            border-radius: 14px !important;
+            border: 2px solid var(--gold) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 15px rgba(212, 175, 55, 0.45) !important;
+            cursor: grab;
+            touch-action: none !important;
+            user-select: none;
+            -webkit-user-select: none;
+            margin-bottom: 0 !important;
+            pointer-events: auto !important;
+            animation: pipFadeIn 0.25s ease-out;
+        }
+
+        .video-wrapper.pip-floating:active {
+            cursor: grabbing;
+        }
+
+        @keyframes pipFadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .pip-overlay {
+            display: none;
+        }
+
+        .video-wrapper.pip-floating .pip-overlay {
+            display: flex;
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.25);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pip-close-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #FFF;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 25;
+        }
+
+        .pip-close-btn:active {
+            transform: scale(0.9);
+            background: #E63946;
+        }
+
+        .pip-badge {
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #F7E7CE;
+            pointer-events: none;
+        }
+
+        #tab-games.pip-standby {
+            display: block !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            right: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: visible !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            z-index: 1499 !important;
+        }
+
+        #tab-games.pip-standby>*:not(.watch-card) {
+            display: none !important;
+        }
+
+        #tab-games.pip-standby .watch-card {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        #tab-games.pip-standby .watch-card>*:not(.video-wrapper) {
+            display: none !important;
+        }
+
+        #tab-games.pip-standby .video-wrapper.pip-floating {
+            pointer-events: auto !important;
+        }
+
+        .watch-status-box {
+            font-size: 12px;
+            color: #E0E0E0;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .wheel-card {
+            text-align: center;
+            background: linear-gradient(180deg, rgba(25, 22, 16, 0.7) 0%, rgba(14, 13, 16, 0.85) 100%);
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 270px;
+            height: 270px;
+            margin: 14px auto 16px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wheel-pointer {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            font-size: 24px;
+            color: #F7E7CE;
+            filter: drop-shadow(0 0 8px #D4AF37);
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        #wheelCanvas {
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(212, 175, 55, 0.25);
+            transition: transform 4s cubic-bezier(0.15, 0.9, 0.25, 1);
+        }
+
+        .wheel-spin-btn {
+            position: absolute;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: var(--gold-gradient);
+            border: 3px solid #08080B;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+            color: #000;
+            font-weight: 800;
+            font-size: 11px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.2s;
+        }
+
+        .wheel-spin-btn:active {
+            transform: scale(0.92);
+        }
+
+        .wheel-spin-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .wheel-result-box {
+            font-size: 13px;
+            color: #F7E7CE;
+            background: rgba(0, 0, 0, 0.45);
+            border-left: 3px solid var(--gold);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        /* AŞK XOX'U STİLLERİ */
+        .xox-card {
+            text-align: center;
+            background: linear-gradient(180deg, rgba(22, 20, 28, 0.75) 0%, rgba(14, 13, 18, 0.88) 100%);
+        }
+
+        .xox-scoreboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .xox-score-box {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .xox-score-name {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .xox-score-val {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #FFFFFF;
+            line-height: 1.1;
+        }
+
+        .xox-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto 14px auto;
+        }
+
+        .xox-cell {
+            aspect-ratio: 1 / 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1.5px solid rgba(212, 175, 55, 0.25);
+            border-radius: 16px;
+            font-size: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #FFF;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .xox-cell:active {
+            transform: scale(0.92);
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .xox-cell.winner-cell {
+            background: rgba(212, 175, 55, 0.25) !important;
+            border-color: var(--gold) !important;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+            animation: xoxWinPulse 1.2s infinite alternate ease-in-out;
+        }
+
+        @keyframes xoxWinPulse {
+            0% {
+                transform: scale(0.96);
+                box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+            }
+
+            100% {
+                transform: scale(1.04);
+                box-shadow: 0 0 25px rgba(212, 175, 55, 0.8);
+            }
+        }
+
+        .xox-status-box {
+            font-size: 12px;
+            color: #E0E0E0;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .envelope-card {
+            text-align: center;
+            background: linear-gradient(180deg, rgba(28, 26, 20, 0.6) 0%, rgba(18, 18, 24, 0.7) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+        }
+
+        .envelope-visual {
+            margin: 10px auto 14px auto;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2C2618 0%, #151410 100%);
+            border: 1.5px solid var(--gold);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .envelope-visual:active {
+            transform: scale(0.92);
+        }
+
+        .note-paper {
+            background: rgba(10, 10, 14, 0.85);
+            border: 1px dashed rgba(212, 175, 55, 0.35);
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .note-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 15px;
+            color: #F7E7CE;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .note-meta {
+            font-size: 11px;
+            color: var(--gold);
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .envelope-actions-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .write-note-btn {
+            background: transparent;
+            border: 1px solid var(--gold);
+            border-radius: 20px;
+            padding: 8px 18px;
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .write-note-btn:active {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .archive-sandik-btn {
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            color: var(--gold-light);
+        }
+
+        .archive-sandik-btn:active {
+            background: var(--gold-gradient) !important;
+            color: #000 !important;
+        }
+
+        .archive-letter-card {
+            background: linear-gradient(135deg, rgba(26, 22, 16, 0.95), rgba(16, 15, 20, 0.95));
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 16px;
+            padding: 14px 16px;
+            position: relative;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .archive-letter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .archive-letter-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #F7E7CE;
+            font-style: italic;
+            word-break: break-word;
+        }
+
+        .archive-fav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: rgba(212, 175, 55, 0.5);
+            line-height: 1;
+        }
+
+        .archive-fav-btn.is-fav {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: var(--gold);
+            color: #FFD700;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        .archive-fav-btn:active {
+            transform: scale(1.15);
+        }
+
+        .bucket-card {
+            padding: 20px 18px;
+        }
+
+        .bucket-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .bucket-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #FFFFFF;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .bucket-input:focus {
+            border-color: var(--gold);
+        }
+
+        .bucket-add-btn {
+            background: var(--gold-gradient);
+            border: none;
+            border-radius: 12px;
+            padding: 0 16px;
+            font-weight: 700;
+            font-size: 14px;
+            color: #000;
+            cursor: pointer;
+        }
+
+        .bucket-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .bucket-item {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .bucket-item.completed {
+            opacity: 0.6;
+            border-color: rgba(212, 175, 55, 0.3);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .bucket-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .bucket-check {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1.5px solid var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #000;
+        }
+
+        .bucket-item.completed .bucket-check {
+            background: var(--gold);
+        }
+
+        .bucket-text {
+            font-size: 13px;
+            color: #FFFFFF;
+            transition: all 0.2s;
+        }
+
+        .bucket-item.completed .bucket-text {
+            text-decoration: line-through;
+            color: var(--gold);
+        }
+
+        .bucket-delete-btn {
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .history-card {
+            padding: 20px 18px;
+        }
+
+        .history-content {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 50px;
+        }
+
+        .history-item {
+            background: rgba(0, 0, 0, 0.35);
+            border-left: 3px solid var(--gold);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .history-item-user {
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .history-item-time {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .empty-state {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 12px 0;
+            font-style: italic;
+        }
+
+        .quote-card {
+            text-align: center;
+            padding: 22px 18px;
+            background: linear-gradient(180deg, rgba(26, 25, 34, 0.4) 0%, rgba(15, 15, 20, 0.7) 100%);
+            margin-top: 4px;
+        }
+
+        .quote-mark {
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            color: var(--gold);
+            opacity: 0.6;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .quote-text {
+            font-size: 12px;
+            font-style: italic;
+            color: #D4AF37;
+            letter-spacing: 0.5px;
+            line-height: 1.6;
+        }
+
+        .quote-author {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 8, 0.94);
+            backdrop-filter: blur(25px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .modal-box {
+            width: 100%;
+            max-width: 360px;
+            background: #131318;
+            border: 1px solid var(--card-border);
+            border-radius: 28px;
+            padding: 28px 22px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(212, 175, 55, 0.15);
+        }
+
+        .modal-title {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            color: #F7E7CE;
+            margin-bottom: 8px;
+        }
+
+        .modal-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .modal-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-opt-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            padding: 14px;
+            border-radius: 16px;
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.25s;
+        }
+
+        .modal-opt-btn:active {
+            background: var(--gold-gradient);
+            color: #000;
+            border-color: transparent;
+            transform: scale(0.98);
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 14px;
+            padding: 12px;
+            color: #FFFFFF;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        .form-input:focus {
+            border-color: var(--gold);
+        }
+
+        .activity-log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 380px;
+            overflow-y: auto;
+            text-align: left;
+            margin: 14px 0;
+            padding-right: 4px;
+        }
+
+        .activity-log-item {
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 3px solid var(--gold);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .activity-log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .activity-log-user {
+            font-weight: 700;
+            font-size: 12px;
+            color: #F7E7CE;
+        }
+
+        .activity-log-time {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .activity-log-detail {
+            font-size: 12px;
+            color: #E0E0E0;
+            line-height: 1.4;
+        }
+
+        .log-filter-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 10px;
+            padding: 8px 4px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .log-filter-btn.active {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--gold);
+            color: #F7E7CE;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+        }
+
+        .live-user-marker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .live-user-pulse {
+            position: absolute;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: userPulse 2s infinite ease-out;
+        }
+
+        .live-user-avatar {
+            position: relative;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.9);
+            border: 2px solid #FFFFFF;
+            z-index: 2;
+        }
+
+        @keyframes userPulse {
+            0% {
+                transform: scale(0.6);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="modal-overlay" id="firstLoginModal" style="display: none;">
+        <div class="modal-box">
+            <div style="font-size: 32px; margin-bottom: 10px;">✨❤️</div>
+            <h2 class="modal-title">Hoş Geldin</h2>
+            <p class="modal-desc">Bu telefon kime ait? (Sadece ilk girişte seçilir)</p>
+            <div class="modal-options">
+                <button class="modal-opt-btn" onclick="saveUser('Atakan')">Atakan</button>
+                <button class="modal-opt-btn" onclick="saveUser('Cemre')">Cemre</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AKTİVİTE GÜNLÜĞÜ MODALI -->
+    <div class="modal-overlay" id="secretActivityModal" style="display: none;">
+        <div class="modal-box" style="max-width: 400px; padding: 22px 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <div style="text-align: left;">
+                    <h2 class="modal-title" style="font-size: 17px; margin-bottom: 2px;">Aktivite Günlüğü</h2>
+                    <span style="font-size: 10px; color: #34C759;">● Canlı Hareket Kayıtları</span>
+                </div>
+                <button class="icon-btn" onclick="clearActivityLogs()" title="Logları Sıfırla">🗑️</button>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                <button class="log-filter-btn active" id="filter-all" onclick="setLogFilter('all')">Tümü</button>
+                <button class="log-filter-btn" id="filter-Atakan" onclick="setLogFilter('Atakan')">👑 Atakan</button>
+                <button class="log-filter-btn" id="filter-Cemre" onclick="setLogFilter('Cemre')">💎 Cemre</button>
+            </div>
+
+            <div class="activity-log-list" id="activityLogsContainer">
+                <div class="empty-state">Kayıtlar yükleniyor...</div>
+            </div>
+
+            <button class="modal-opt-btn"
+                style="width: 100%; background: var(--gold-gradient); color: #000; margin-top: 8px; padding: 12px;"
+                onclick="closeSecretActivityModal()">Kapat ✕</button>
+        </div>
+    </div>
+
+    <!-- SÜRPRİZ NOT YAZMA MODALI -->
+    <div class="modal-overlay" id="writeNoteModal" style="display: none;">
+        <div class="modal-box">
+            <div style="font-size: 28px; margin-bottom: 8px;">💌</div>
+            <h2 class="modal-title">Sürpriz Not Bırak</h2>
+            <p class="modal-desc">Sevgiline günün tatlı bir sözünü yaz...</p>
+            <textarea id="noteInput" class="form-input" style="height: 100px; resize: none;"
+                placeholder="Bugün seni çok özledim..."></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button class="modal-opt-btn" style="flex: 1; background: transparent;"
+                    onclick="closeNoteModal()">İptal</button>
+                <button class="modal-opt-btn" style="flex: 1; background: var(--gold); color: #000;"
+                    onclick="submitNote()">Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AŞK MEKTUPLARI ARŞİVİ (AÇILIR MODAL SANDIK) -->
+    <div class="modal-overlay" id="notesArchiveModal" style="display: none;">
+        <div class="modal-box"
+            style="max-width: 400px; padding: 22px 16px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="text-align: left;">
+                    <h2 class="modal-title" style="font-size: 17px; margin-bottom: 2px;">📜 Aşk Sandığı</h2>
+                    <span style="font-size: 10px; color: var(--gold);" id="archiveCountBadge">Yükleniyor...</span>
+                </div>
+                <button class="icon-btn" onclick="closeNotesArchiveModal()" title="Kapat">✕</button>
+            </div>
+
+            <!-- Filtre Butonları -->
+            <div style="display: flex; gap: 5px; margin-bottom: 12px;">
+                <button class="log-filter-btn active" id="archive-filter-all"
+                    onclick="setArchiveFilter('all')">Tümü</button>
+                <button class="log-filter-btn" id="archive-filter-Atakan" onclick="setArchiveFilter('Atakan')">👑
+                    Atakan</button>
+                <button class="log-filter-btn" id="archive-filter-Cemre" onclick="setArchiveFilter('Cemre')">💎
+                    Cemre</button>
+                <button class="log-filter-btn" id="archive-filter-fav" onclick="setArchiveFilter('fav')">⭐
+                    Favoriler</button>
+            </div>
+
+            <!-- Not Listesi -->
+            <div class="activity-log-list" id="archiveNotesList"
+                style="flex: 1; overflow-y: auto; margin: 0; padding-right: 4px;">
+                <div class="empty-state">Mektuplar yükleniyor...</div>
+            </div>
+
+            <button class="modal-opt-btn"
+                style="width: 100%; background: var(--gold-gradient); color: #000; margin-top: 14px; padding: 12px;"
+                onclick="closeNotesArchiveModal()">Sandığı Kapat ✕</button>
+        </div>
+    </div>
+
+    <!-- HARİTA ÖZEL ANI MODALI -->
+    <div class="modal-overlay" id="mapMemoryModal" style="display: none;">
+        <div class="modal-box">
+            <div style="font-size: 28px; margin-bottom: 8px;">📍✨</div>
+            <h2 class="modal-title">Özel Anı Bırak</h2>
+            <p class="modal-desc" id="mapModalCoordsDesc">Haritada seçilen noktaya anınızı mühürleyin.</p>
+            <input type="text" id="memoryTitle" class="form-input" placeholder="Anının Başlığı (Örn: İlk Kahvemiz ☕)"
+                maxlength="40">
+            <input type="text" id="memoryDate" class="form-input" placeholder="Tarih (Örn: 8 Haziran 2026)">
+            <textarea id="memoryNote" class="form-input" style="height: 75px; resize: none;"
+                placeholder="Burada ne hissettin? Küçük bir hatıra cümlesi..."></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button class="modal-opt-btn" style="flex: 1; background: transparent;"
+                    onclick="closeMapModal()">İptal</button>
+                <button class="modal-opt-btn" style="flex: 1; background: var(--gold); color: #000;"
+                    onclick="saveMapMemory()">Kaydet 💖</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div class="topbar">
+            <div class="user-info">
+                <div class="user-avatar" id="topAvatar" onclick="openSecretLogPrompt()" title="Aktivite Günlüğü">❤️
+                </div>
+                <div class="user-text">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="status-tag"><span class="live-dot"></span> Çevrimiçi</span>
+                        <span id="partnerStatusChip"
+                            style="font-size: 10px; color: var(--gold-light); display: inline-flex; align-items: center; gap: 3px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); padding: 1px 6px; border-radius: 8px;">
+                            <span id="partnerBatteryIcon">🔋</span>
+                            <span id="partnerBatteryText">...</span>
+                        </span>
+                    </div>
+                    <span class="welcome-name" id="topWelcome">Hoş geldin</span>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-btn" onclick="requestNotification(true)" title="Bildirimleri Aç">🔔</button>
+                <button class="icon-btn" onclick="resetUser()" title="Kullanıcı Değiştir">👤</button>
+            </div>
+        </div>
+
+        <div class="header-section">
+            <div class="couple-names">A T A K A N &nbsp;✦&nbsp; C E M R E</div>
+            <h1 class="main-title">Sonsuz Aşkın Takvimi</h1>
+            <p class="sub-quote">İlk günden bu yana geçen her saniye sana adandı.</p>
+        </div>
+
+        <!-- 1. SEKME: BİZ -->
+        <div class="tab-content active" id="tab-biz">
+            <div class="card">
+                <div class="card-header-line">
+                    <div class="card-tag">❤️ BİRLİKTELİK BAŞLANGICI</div>
+                    <div class="card-date-badge">8 Haziran 2026</div>
+                </div>
+                <div class="timer-grid">
+                    <div class="timer-box"><span class="timer-value" id="days">0</span><span
+                            class="timer-label">GÜN</span></div>
+                    <div class="timer-box"><span class="timer-value" id="hours">0</span><span
+                            class="timer-label">SAAT</span></div>
+                    <div class="timer-box"><span class="timer-value" id="minutes">0</span><span
+                            class="timer-label">DAKİKA</span></div>
+                    <div class="timer-box"><span class="timer-value" id="seconds">0</span><span
+                            class="timer-label">SANİYE</span></div>
+                </div>
+                <div class="heartbeat-bar">
+                    <span class="heartbeat-title">❤️ Kalp Atışımız:</span>
+                    <span class="heartbeat-val" id="heartbeatCounter">~0 vuruş</span>
+                </div>
+            </div>
+
+            <!-- TELEPATİ (SENİ DÜŞÜNÜYORUM) -->
+            <div class="card telepati-card">
+                <div class="card-tag" style="justify-content: center;">BİRBİRİMİZE BAĞLANTIMIZ</div>
+                <div class="telepati-title">Aklımdasın, Kalbimdesin</div>
+
+                <div class="thought-btn-wrapper">
+                    <div class="thought-btn-glow"></div>
+                    <button class="thought-btn" onclick="sendThought()">
+                        <span class="heart-icon">💖</span>
+                        <span class="thought-btn-text">SENİ<br>DÜŞÜNÜYORUM</span>
+                    </button>
+                </div>
+
+                <div class="ritual-actions">
+                    <button class="ritual-btn" onclick="sendRitual('morning')">
+                        <span>☀️</span> Günaydın
+                    </button>
+                    <button class="ritual-btn" onclick="sendRitual('night')">
+                        <span>🌙</span> İyi Geceler
+                    </button>
+                </div>
+
+                <div class="telepati-pill" id="statusMessage">
+                    Butona bas ve aklında olduğunu hissettir ✨
+                </div>
+                <div class="total-count">
+                    Toplam Hatırlanma: <strong id="totalCountDisplay" style="color: #F7E7CE;">0</strong> Kez
+                </div>
+            </div>
+
+            <!-- SANAL SARILMA -->
+            <div class="card touch-card">
+                <div class="card-header-line">
+                    <div class="card-tag">✨ SARILMA & TEMAS</div>
+                    <div class="card-date-badge" id="touchBadge">Beklemede</div>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
+                    İkiniz aynı anda basılı tuttuğunuzda telefonlarınız birlikte titrer...
+                </p>
+
+                <div class="touch-interactive-box">
+                    <div class="touch-ring-anim" id="touchRing"></div>
+                    <div class="touch-button" id="touchBtn" oncontextmenu="return false;">
+                        <span id="touchBtnIcon" style="font-size: 28px;">🫀</span>
+                        <span
+                            style="font-size: 8px; font-weight: 700; letter-spacing: 1px; color: var(--gold); text-transform: uppercase;">BASILI
+                            TUT</span>
+                    </div>
+                </div>
+
+                <div class="touch-status-box" id="touchStatusText">
+                    Parmağını basılı tutarak temas başlat...
+                </div>
+            </div>
+
+            <!-- GÜNÜN SÜRPRİZ NOTU & AŞK SANDIĞI -->
+            <div class="card envelope-card">
+                <div class="card-header-line">
+                    <div class="card-tag">💌 GÜNÜN SÜRPRİZ NOTU</div>
+                    <div class="card-date-badge" id="noteBadge">Canlı</div>
+                </div>
+
+                <div class="envelope-visual" onclick="toggleNoteDisplay()">
+                    ✉️
+                </div>
+
+                <div class="note-paper" id="noteDisplayBox">
+                    <div class="note-text" id="noteDisplay">"Henüz bir aşk notu bırakılmadı..."</div>
+                    <div class="note-meta" id="noteAuthor">— Atakan & Cemre</div>
+                </div>
+
+                <div class="envelope-actions-row">
+                    <button class="write-note-btn" onclick="openNoteModal()">Yeni Not Bırak ✍️</button>
+                    <button class="write-note-btn archive-sandik-btn" onclick="openNotesArchiveModal()">📜 Aşk
+                        Sandığı</button>
+                </div>
+            </div>
+
+            <div class="card history-card">
+                <div class="card-header-line">
+                    <div class="card-tag">DÜŞÜNCE GEÇMİŞİ</div>
+                    <div class="card-date-badge" style="color: #34C759;">● Canlı</div>
+                </div>
+                <div class="history-content" id="historyList">
+                    <div class="empty-state">Henüz bir sinyal gönderilmedi. İlk dokunuşu yukarıdan başlat!</div>
+                </div>
+            </div>
+
+            <div class="card quote-card">
+                <div class="quote-mark">“</div>
+                <div class="quote-text">“İki ruh, tek bir gökyüzü... Sonsuza dek Atakan & Cemre.”</div>
+                <span class="quote-author">— ATAKAN & CEMRE</span>
+            </div>
+        </div>
+
+        <!-- 2. SEKME: HARİTA -->
+        <div class="tab-content" id="tab-map">
+            <div class="card map-card">
+                <div class="card-header-line">
+                    <div class="card-tag">🗺️ BİZİM HARİTAMIZ</div>
+                    <div class="card-date-badge" id="mapBadge">0 Anı Mühürlendi</div>
+                </div>
+
+                <div class="map-search-wrapper">
+                    <div class="map-search-box">
+                        <span class="map-search-icon" id="mapSearchIcon">🔍</span>
+                        <input type="text" id="mapSearchInput" class="map-search-input"
+                            placeholder="Mekan veya sokak ara... (Örn: Sevinç Pastanesi)" autocomplete="off"
+                            oninput="handleMapSearch(this.value)">
+                        <button class="map-search-clear-btn" id="mapSearchClearBtn"
+                            onclick="clearMapSearch()">✕</button>
+                    </div>
+                    <div class="map-search-dropdown" id="mapSearchResults" style="display: none;"></div>
+                </div>
+
+                <div id="memoryMap"></div>
+
+                <div class="map-controls-row">
+                    <span class="map-help-text">💡 Haritaya dokunarak anı ekleyebilirsiniz.</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="map-add-pin-btn" onclick="centerOnMyLiveLocation()"
+                            style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--gold); color: #F7E7CE;">
+                            <span>🎯</span> Konumum
+                        </button>
+                        <button class="map-add-pin-btn" onclick="promptCenterAddMemory()">
+                            <span>📍</span> Anı Bırak
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card quote-card">
+                <div class="quote-mark">“</div>
+                <div class="quote-text">“İki ruh, tek bir gökyüzü... Sonsuza dek Atakan & Cemre.”</div>
+                <span class="quote-author">— ATAKAN & CEMRE</span>
+            </div>
+        </div>
+
+        <!-- 3. SEKME: PLANLAR -->
+        <div class="tab-content" id="tab-plans">
+            <div class="card bucket-card">
+                <div class="card-header-line">
+                    <div class="card-tag">📝 BİRLİKTE YAPILACAKLAR</div>
+                    <div class="card-date-badge" id="bucketCountBadge">0 Tamamlandı</div>
+                </div>
+
+                <div class="bucket-input-row">
+                    <input type="text" id="bucketInput" class="bucket-input"
+                        placeholder="Birlikte yeni bir hayal yaz..." maxlength="50"
+                        onkeydown="if(event.key==='Enter') addBucketItem()">
+                    <button class="bucket-add-btn" onclick="addBucketItem()">Ekle</button>
+                </div>
+
+                <div class="bucket-list" id="bucketListContainer"></div>
+            </div>
+
+            <div class="card quote-card">
+                <div class="quote-mark">“</div>
+                <div class="quote-text">“İki ruh, tek bir gökyüzü... Sonsuza dek Atakan & Cemre.”</div>
+                <span class="quote-author">— ATAKAN & CEMRE</span>
+            </div>
+        </div>
+
+        <!-- 4. SEKME: EĞLENCE -->
+        <div class="tab-content" id="tab-games">
+            <div class="card watch-card">
+                <div class="card-header-line">
+                    <div class="card-tag">🎬 BİRLİKTE İZLE & DİNLE</div>
+                    <div class="card-date-badge" id="watchSyncBadge">Hazır</div>
+                </div>
+
+                <div class="watch-input-row">
+                    <input type="text" id="youtubeUrlInput" class="watch-input"
+                        placeholder="YouTube video linki veya ID girin..." autocomplete="off">
+                    <button class="watch-load-btn" onclick="submitNewVideo()">Birlikte Aç 🍿</button>
+                </div>
+
+                <div class="video-wrapper" id="videoWrapper">
+                    <div class="pip-overlay" id="pipOverlay" onclick="handlePipClick()">
+                        <button class="pip-close-btn" onclick="closePiP(event)" title="Kapat">✕</button>
+                        <div class="pip-badge">⛶ Büyüt</div>
+                    </div>
+                    <div id="syncPlayer"></div>
+                </div>
+
+                <div class="watch-status-box">
+                    <span id="watchStatusText">✨ Ortak bir klip veya video açın, birlikte senkronize aksın...</span>
+                </div>
+                <button id="joinSyncBtn" onclick="manualJoinSync()"
+                    style="display: none; width: 100%; margin-top: 8px; background: var(--gold-gradient); color: #000; font-weight: 700; border: none; border-radius: 12px; padding: 12px; font-size: 13px; cursor: pointer; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);">
+                    ⚡ Senkrona Katıl
+                </button>
+            </div>
+
+            <!-- AŞK XOX'U (CANLI SENKRON İKİ KİŞİLİK OYUN) -->
+            <div class="card xox-card">
+                <div class="card-header-line">
+                    <div class="card-tag">⚔️ AŞK XOX'U</div>
+                    <div class="card-date-badge" id="xoxBadge">Yükleniyor...</div>
+                </div>
+
+                <!-- Skor Tablosu -->
+                <div class="xox-scoreboard">
+                    <div class="xox-score-box">
+                        <span class="xox-score-name" style="color: #F7E7CE;">👑 Atakan</span>
+                        <span class="xox-score-val" id="xoxScoreAtakan">0</span>
+                    </div>
+                    <div class="xox-score-box">
+                        <span class="xox-score-name" style="color: var(--text-muted);">🤝 Berabere</span>
+                        <span class="xox-score-val" id="xoxScoreDraw">0</span>
+                    </div>
+                    <div class="xox-score-box">
+                        <span class="xox-score-name" style="color: #FFB6C1;">💎 Cemre</span>
+                        <span class="xox-score-val" id="xoxScoreCemre">0</span>
+                    </div>
+                </div>
+
+                <!-- 3x3 Oyun Izgarası -->
+                <div class="xox-grid">
+                    <button class="xox-cell" onclick="handleCellClick(0)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(1)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(2)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(3)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(4)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(5)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(6)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(7)"></button>
+                    <button class="xox-cell" onclick="handleCellClick(8)"></button>
+                </div>
+
+                <div class="xox-status-box" id="xoxStatusText">
+                    Oyun tahtası yükleniyor...
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="modal-opt-btn"
+                        style="flex: 2; padding: 10px; font-size: 12px; background: var(--gold-gradient); color: #000; font-weight: 700;"
+                        onclick="resetXoxRound()">
+                        Yeni Tur 🔄
+                    </button>
+                    <button class="modal-opt-btn"
+                        style="flex: 1; padding: 10px; font-size: 11px; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1);"
+                        onclick="resetXoxScores()" title="Skorları Sıfırla">
+                        Sıfırla 🗑️
+                    </button>
+                </div>
+            </div>
+
+            <div class="card wheel-card">
+                <div class="card-header-line">
+                    <div class="card-tag">🎰 AŞK ÇARKIFELEĞİ</div>
+                    <div class="card-date-badge" id="wheelBadge">Canlı Senkron</div>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+                    Çevir butona dokun, ikinizin ekranında aynı anda dönsün!
+                </p>
+
+                <div class="wheel-container">
+                    <div class="wheel-pointer">▼</div>
+                    <canvas id="wheelCanvas" width="520" height="520"></canvas>
+                    <button class="wheel-spin-btn" id="spinWheelBtn" onclick="requestSpin()">ÇEVİR</button>
+                </div>
+
+                <div class="wheel-result-box" id="wheelResultBox">
+                    Çark hazır! Çevirmek için ortadaki butona dokunun ✨
+                </div>
+            </div>
+
+            <div class="card quote-card">
+                <div class="quote-mark">“</div>
+                <div class="quote-text">“İki ruh, tek bir gökyüzü... Sonsuza dek Atakan & Cemre.”</div>
+                <span class="quote-author">— ATAKAN & CEMRE</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ALT NAVİGASYON BARI -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" id="nav-biz" onclick="switchTab('biz')">
+            <span class="nav-icon">❤️</span>
+            <span>Biz</span>
+        </button>
+        <button class="nav-item" id="nav-map" onclick="switchTab('map')">
+            <span class="nav-icon">🗺️</span>
+            <span>Harita</span>
+        </button>
+        <button class="nav-item" id="nav-plans" onclick="switchTab('plans')">
+            <span class="nav-icon">📝</span>
+            <span>Planlar</span>
+        </button>
+        <button class="nav-item" id="nav-games" onclick="switchTab('games')">
+            <span class="nav-icon">🎰</span>
+            <span>Eğlence</span>
+        </button>
+    </nav>
+
+    <script>
+        const ADMIN_PIN = "0806";
+        const ONESIGNAL_APP_ID = "251ef0ec-43dd-40a2-ad97-2e6f755e6bce";
+
+        // 1. Firebase Bağlantısı
+        const firebaseConfig = {
+            apiKey: "AIzaSyCCWkzq1hZ5Oz8AjqI96PwcI2iIVSMhdBs",
+            authDomain: "atakan-cemre-ask.firebaseapp.com",
+            projectId: "atakan-cemre-ask",
+            storageBucket: "atakan-cemre-ask.firebasestorage.app",
+            messagingSenderId: "255495169214",
+            appId: "1:255495169214:web:fe5add49e33b7592816aef",
+            databaseURL: "https://atakan-cemre-ask-default-rtdb.europe-west1.firebasedatabase.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 2. ONESIGNAL BAŞLATICI & KULLANICI LOGIN
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function (OneSignal) {
+            await OneSignal.init({
+                appId: ONESIGNAL_APP_ID,
+                notifyButton: { enable: false },
+                allowLocalhostAsSecureOrigin: true
+            });
+
+            OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+                event.preventDefault();
+            });
+
+            if (currentUser) {
+                await OneSignal.login(currentUser);
+                await OneSignal.User.PushSubscription.optIn();
+            }
+        });
+
+        // 3. OneSignal ile Push Bildirimi Gönderme
+        function sendPushViaOneSignal(title, message) {
+            if (!currentUser) return;
+            const targetUser = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+
+            fetch('https://herseysen-push.hehshdjjdjdjd.workers.dev', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetUser: targetUser,
+                    title: title,
+                    message: message
+                })
+            }).catch(() => { });
+        }
+
+        // 4. Kullanıcı Yönetimi
+        let currentUser = localStorage.getItem('activeUser');
+        function checkUser() {
+            if (!currentUser) {
+                document.getElementById('firstLoginModal').style.display = 'flex';
+            } else {
+                document.getElementById('firstLoginModal').style.display = 'none';
+                document.getElementById('topAvatar').innerText = currentUser === 'Atakan' ? '👑' : '💎';
+                document.getElementById('topWelcome').innerText = `Hoş geldin, ${currentUser}`;
+            }
+        }
+
+        function saveUser(name) {
+            currentUser = name;
+            localStorage.setItem('activeUser', name);
+            checkUser();
+
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            OneSignalDeferred.push(async function (OneSignal) {
+                await OneSignal.login(name);
+                await OneSignal.Notifications.requestPermission();
+            });
+
+            logActivity('GİRİŞ', `${name} uygulamaya giriş yaptı`);
+            initBatteryAndPresence();
+            listenPartnerBattery();
+            startLiveLocationTracking();
+            listenLiveLocations();
+        }
+
+        function resetUser() {
+            if (confirm('Kullanıcıyı değiştirmek istiyor musunuz?')) {
+                localStorage.removeItem('activeUser');
+                currentUser = null;
+                checkUser();
+            }
+        }
+        checkUser();
+
+        // 5. OTOMATİK AKTİVİTE LOG MOTORU
+        function logActivity(action, detail = '') {
+            if (!currentUser) return;
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+
+            db.ref('user_activity_logs').push({
+                user: currentUser,
+                action: action,
+                detail: detail,
+                timeStr: `${dateStr} ${timeStr}`,
+                timestamp: Date.now()
+            });
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                needResumeModal = true;
+                hideInAppBanner();
+                logActivity('ÇIKIŞ', 'Uygulamadan çıktı / arka plana aldı');
+            } else {
+                checkResumeState();
+                logActivity('GERİ_DÖNDÜ', 'Uygulamaya geri döndü / ekranı açtı');
+            }
+        });
+
+        window.addEventListener('load', () => {
+            if (currentUser) {
+                logActivity('GİRİŞ', 'Uygulamaya girdi ✨');
+            }
+            initMap();
+            initBatteryAndPresence();
+            listenPartnerBattery();
+            startLiveLocationTracking();
+            listenLiveLocations();
+            listenSurpriseNotesArchive();
+            listenXoxGame();
+        });
+
+        // 6. CANLI AKTİVİTE GÜNLÜĞÜ MODALI
+        let activeLogFilter = 'all';
+        let cachedActivityLogs = [];
+        let activityLogQuery = null;
+
+        function openSecretLogPrompt() {
+            if (!currentUser) return;
+            openSecretActivityModal();
+        }
+
+        function setLogFilter(filterName) {
+            activeLogFilter = filterName;
+            document.querySelectorAll('.log-filter-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`filter-${filterName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            renderActivityLogs();
+        }
+
+        function renderActivityLogs() {
+            const container = document.getElementById('activityLogsContainer');
+            if (!container) return;
+
+            const filteredList = activeLogFilter === 'all'
+                ? cachedActivityLogs
+                : cachedActivityLogs.filter(item => item.user === activeLogFilter);
+
+            if (filteredList.length === 0) {
+                container.innerHTML = `<div class="empty-state">Bu filtrede henüz kayıtlı bir hareket bulunmuyor.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            filteredList.forEach(item => {
+                const isAtakan = item.user === 'Atakan';
+                const row = document.createElement('div');
+                row.className = 'activity-log-item';
+                row.style.borderLeftColor = isAtakan ? '#D4AF37' : '#FF6B8B';
+
+                row.innerHTML = `
+                    <div class="activity-log-header">
+                        <span class="activity-log-user" style="color: ${isAtakan ? '#F7E7CE' : '#FFB6C1'};">
+                            ${isAtakan ? '👑 Atakan' : '💎 Cemre'}
+                        </span>
+                        <span class="activity-log-time">${item.timeStr}</span>
+                    </div>
+                    <div class="activity-log-detail">${escapeHtml(item.detail || item.action)}</div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function openSecretActivityModal() {
+            document.getElementById('secretActivityModal').style.display = 'flex';
+            const container = document.getElementById('activityLogsContainer');
+
+            if (cachedActivityLogs.length === 0) {
+                container.innerHTML = '<div class="empty-state">Canlı akış bağlanıyor...</div>';
+            } else {
+                renderActivityLogs();
+            }
+
+            if (activityLogQuery) {
+                activityLogQuery.off();
+            }
+
+            activityLogQuery = db.ref('user_activity_logs').limitToLast(120);
+            activityLogQuery.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    cachedActivityLogs = [];
+                } else {
+                    cachedActivityLogs = Object.values(data).reverse();
+                }
+
+                if (document.getElementById('secretActivityModal').style.display !== 'none') {
+                    renderActivityLogs();
+                }
+            });
+        }
+
+        function closeSecretActivityModal() {
+            document.getElementById('secretActivityModal').style.display = 'none';
+            if (activityLogQuery) {
+                activityLogQuery.off();
+                activityLogQuery = null;
+            }
+        }
+
+        function clearActivityLogs() {
+            if (confirm('Tüm aktivite geçmişini silmek istiyor musunuz?')) {
+                db.ref('user_activity_logs').remove().then(() => {
+                    cachedActivityLogs = [];
+                    renderActivityLogs();
+                });
+            }
+        }
+
+        // 7. PİP (MINI YÜZEN PENCERE) KONTROLÜ
+        let isPiPActive = false;
+        let isDraggingPip = false;
+        let pipHasMoved = false;
+        let pipTranslateX = 0;
+        let pipTranslateY = 0;
+        let pipStartX = 0;
+        let pipStartY = 0;
+        let pipCurrentX = 0;
+        let pipCurrentY = 0;
+        let pipBaseLeft = 0;
+        let pipBaseTop = 0;
+
+        function enablePiP() {
+            const wrapper = document.getElementById('videoWrapper');
+            const gamesTab = document.getElementById('tab-games');
+            if (!wrapper || !gamesTab) return;
+            if (isPiPActive) return;
+
+            isPiPActive = true;
+            pipTranslateX = 0;
+            pipTranslateY = 0;
+            wrapper.style.transform = '';
+            wrapper.classList.add('pip-floating');
+            gamesTab.classList.add('pip-standby');
+        }
+
+        function disablePiP() {
+            const wrapper = document.getElementById('videoWrapper');
+            const gamesTab = document.getElementById('tab-games');
+            if (!wrapper || !gamesTab) return;
+
+            isPiPActive = false;
+            pipTranslateX = 0;
+            pipTranslateY = 0;
+            wrapper.style.transform = '';
+            wrapper.style.transition = '';
+            wrapper.classList.remove('pip-floating');
+            gamesTab.classList.remove('pip-standby');
+        }
+
+        function expandPiPToTab() {
+            disablePiP();
+            switchTab('games');
+        }
+
+        function closePiP(e) {
+            if (e) e.stopPropagation();
+            if (ytPlayer && ytPlayer.pauseVideo) {
+                ytPlayer.pauseVideo();
+            }
+            disablePiP();
+        }
+
+        function handlePipClick() {
+            if (pipHasMoved) {
+                pipHasMoved = false;
+                return;
+            }
+            expandPiPToTab();
+        }
+
+        const pipDragOverlay = document.getElementById('pipOverlay');
+
+        function onPipPointerStart(e) {
+            if (!isPiPActive) return;
+            if (e.target.closest('.pip-close-btn')) return;
+
+            const point = e.touches ? e.touches[0] : e;
+            const wrapper = document.getElementById('videoWrapper');
+            const rect = wrapper.getBoundingClientRect();
+
+            isDraggingPip = true;
+            pipHasMoved = false;
+            pipStartX = point.clientX;
+            pipStartY = point.clientY;
+            pipCurrentX = pipTranslateX;
+            pipCurrentY = pipTranslateY;
+
+            pipBaseLeft = rect.left - pipTranslateX;
+            pipBaseTop = rect.top - pipTranslateY;
+
+            wrapper.style.transition = 'none';
+        }
+
+        function onPipPointerMove(e) {
+            if (!isDraggingPip || !isPiPActive) return;
+
+            const point = e.touches ? e.touches[0] : e;
+            const deltaX = point.clientX - pipStartX;
+            const deltaY = point.clientY - pipStartY;
+
+            if (Math.hypot(deltaX, deltaY) > 5) {
+                pipHasMoved = true;
+            }
+
+            if (!pipHasMoved) return;
+
+            if (e.cancelable) e.preventDefault();
+
+            const wrapper = document.getElementById('videoWrapper');
+            const pipWidth = wrapper.offsetWidth;
+            const pipHeight = wrapper.offsetHeight;
+
+            const minX = 8 - pipBaseLeft;
+            const maxX = (window.innerWidth - pipWidth - 8) - pipBaseLeft;
+            const minY = 10 - pipBaseTop;
+            const maxY = (window.innerHeight - pipHeight - 75) - pipBaseTop;
+
+            let nextX = pipCurrentX + deltaX;
+            let nextY = pipCurrentY + deltaY;
+
+            nextX = Math.max(minX, Math.min(nextX, maxX));
+            nextY = Math.max(minY, Math.min(nextY, maxY));
+
+            pipTranslateX = nextX;
+            pipTranslateY = nextY;
+
+            wrapper.style.transform = `translate3d(${nextX}px, ${nextY}px, 0)`;
+        }
+
+        function onPipPointerEnd() {
+            if (!isDraggingPip) return;
+            isDraggingPip = false;
+            const wrapper = document.getElementById('videoWrapper');
+            if (wrapper) {
+                wrapper.style.transition = '';
+            }
+        }
+
+        pipDragOverlay.addEventListener('touchstart', onPipPointerStart, { passive: false });
+        window.addEventListener('touchmove', onPipPointerMove, { passive: false });
+        window.addEventListener('touchend', onPipPointerEnd);
+        window.addEventListener('touchcancel', onPipPointerEnd);
+
+        pipDragOverlay.addEventListener('mousedown', onPipPointerStart);
+        window.addEventListener('mousemove', onPipPointerMove);
+        window.addEventListener('mouseup', onPipPointerEnd);
+
+        // 8. Sekme Yönetimi
+        function switchTab(tabId) {
+            const isPlaying = ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+            const isLeavingGames = (tabId !== 'games');
+
+            if (isPlaying && isLeavingGames) {
+                enablePiP();
+            } else {
+                disablePiP();
+            }
+
+            document.querySelectorAll('.tab-content').forEach(el => {
+                if (el.id === 'tab-games' && isPiPActive) {
+                    el.classList.remove('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            const targetNav = document.getElementById(`nav-${tabId}`);
+
+            if (targetTab) targetTab.classList.add('active');
+            if (targetNav) targetNav.classList.add('active');
+
+            const tabNames = { biz: 'Biz', map: 'Harita', plans: 'Planlar', games: 'Eğlence' };
+            logActivity('SEKME_GEÇİŞİ', `${tabNames[tabId] || tabId} sekmesine geçti`);
+
+            if (tabId === 'map' && memoryMap) {
+                setTimeout(() => {
+                    memoryMap.invalidateSize();
+                }, 150);
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 9. Sayaç & Kalp Atışı
+        const startDate = new Date('2026-06-08T00:00:00');
+        function updateTimer() {
+            const now = new Date();
+            const diff = now - startDate;
+            if (diff > 0) {
+                document.getElementById('days').innerText = Math.floor(diff / (1000 * 60 * 60 * 24));
+                document.getElementById('hours').innerText = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                document.getElementById('minutes').innerText = Math.floor((diff / 1000 / 60) % 60);
+                document.getElementById('seconds').innerText = Math.floor((diff / 1000) % 60);
+
+                const totalSeconds = Math.floor(diff / 1000);
+                const beats = Math.floor(totalSeconds * 1.2);
+                document.getElementById('heartbeatCounter').innerText = `~${beats.toLocaleString('tr-TR')} vuruş`;
+            }
+        }
+        setInterval(updateTimer, 1000);
+        updateTimer();
+
+        function playHarpChime() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + i * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 1.2);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + i * 0.08);
+                    osc.stop(ctx.currentTime + i * 0.08 + 1.3);
+                });
+            } catch (e) { }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // 10. Seni Düşünüyorum
+        function sendThought() {
+            if (!currentUser) return;
+            playHarpChime();
+            if (navigator.vibrate) navigator.vibrate([40, 80, 40]);
+
+            confetti({
+                particleCount: 50,
+                spread: 80,
+                origin: { y: 0.65 },
+                colors: ['#D4AF37', '#F7E7CE', '#FF6B8B', '#FFFFFF']
+            });
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+            db.ref('telepati_events').push({
+                sender: currentUser,
+                type: 'thought',
+                time: timeStr,
+                timestamp: Date.now()
+            });
+
+            db.ref('total_thoughts').transaction((cnt) => (cnt || 0) + 1);
+            logActivity('TELEPATİ', 'Seni Düşünüyorum butonuna bastı 💖');
+
+            sendPushViaOneSignal(
+                `💖 ${currentUser} seni düşünüyor!`,
+                `Saat ${timeStr} · Kalbi ve aklı şu an seninle...`
+            );
+        }
+
+        // 11. Ritüeller
+        function sendRitual(type) {
+            if (!currentUser) return;
+            playHarpChime();
+            if (navigator.vibrate) navigator.vibrate([60, 100, 60]);
+
+            confetti({
+                particleCount: 40,
+                spread: 60,
+                origin: { y: 0.7 },
+                colors: type === 'morning' ? ['#FFA500', '#FFD700', '#FFF'] : ['#4A90E2', '#D4AF37', '#FFF']
+            });
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+            db.ref('telepati_events').push({
+                sender: currentUser,
+                type: type,
+                time: timeStr,
+                timestamp: Date.now()
+            });
+
+            db.ref('total_thoughts').transaction((cnt) => (cnt || 0) + 1);
+
+            const isMorning = type === 'morning';
+            logActivity('RİTÜEL', isMorning ? 'Günaydın öpücüğü gönderdi ☀️' : 'İyi geceler diledi 🌙');
+
+            sendPushViaOneSignal(
+                isMorning ? `☀️ ${currentUser}'dan Günaydın!` : `🌙 ${currentUser}'dan İyi Geceler!`,
+                isMorning ? `Yeni güne seninle başladı... ❤️` : `Rüyalarında seninle buluşmak üzere... ❤️`
+            );
+        }
+
+        // 12. SANAL SARILMA (HAPTIC TOUCH)
+        const touchBtn = document.getElementById('touchBtn');
+        let isHolding = false;
+        let isPartnerTouching = false;
+        let prevPartnerTouching = false;
+        let hugLoopInterval = null;
+        let lastTouchNotifTime = 0;
+        let needResumeModal = false;
+
+        const hugUnlockModal = document.createElement('div');
+        hugUnlockModal.className = 'modal-overlay';
+        hugUnlockModal.style.display = 'none';
+        hugUnlockModal.innerHTML = `
+          <div class="modal-box" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+            <div style="font-size: 36px; margin-bottom: 10px;">🫂💖</div>
+            <h2 class="modal-title" id="hugModalTitle">Seni Bekliyor!</h2>
+            <p class="modal-desc">Şu an parmağını ekranda tutuyor. Titreşim bağını aktif etmek için dokun ve ardından butona basılı tut.</p>
+            <button class="modal-opt-btn" id="unlockHugBtn" style="background: var(--gold-gradient); color: #000; font-weight: 700; width: 100%; max-width: 220px; margin: 0 auto; display: flex; justify-content: center; align-items: center;">
+              Sarılmaya Katıl ❤️
+            </button>
+          </div>
+        `;
+        document.body.appendChild(hugUnlockModal);
+
+        document.getElementById('unlockHugBtn').addEventListener('click', () => {
+            hugUnlockModal.style.display = 'none';
+            if (navigator.vibrate) navigator.vibrate(60);
+            switchTab('biz');
+            setTimeout(() => {
+                touchBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        });
+
+        const inAppBanner = document.createElement('div');
+        inAppBanner.id = 'inAppBanner';
+        inAppBanner.style.cssText = `
+          position: fixed;
+          top: -80px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: calc(100% - 32px);
+          max-width: 390px;
+          background: linear-gradient(135deg, rgba(30, 26, 20, 0.95), rgba(15, 15, 20, 0.95));
+          border: 1px solid var(--gold);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.3);
+          backdrop-filter: blur(15px);
+          border-radius: 18px;
+          padding: 12px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          z-index: 99999;
+          transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          cursor: pointer;
+        `;
+        inAppBanner.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">🫂</span>
+            <div style="display: flex; flex-direction: column;">
+              <strong id="inAppBannerTitle" style="font-size: 13px; color: #F7E7CE;">Dokunuyor!</strong>
+              <span style="font-size: 11px; color: var(--gold);">Sarılmak için hemen tıkla...</span>
+            </div>
+          </div>
+          <span style="font-size: 14px; color: var(--gold);">❯</span>
+        `;
+        inAppBanner.onclick = () => {
+            switchTab('biz');
+            setTimeout(() => {
+                touchBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            hideInAppBanner();
+        };
+        document.body.appendChild(inAppBanner);
+
+        function showInAppBanner(partnerName) {
+            document.getElementById('inAppBannerTitle').innerText = `${partnerName} ekrana dokunuyor!`;
+            inAppBanner.style.top = '16px';
+        }
+        function hideInAppBanner() {
+            inAppBanner.style.top = '-80px';
+        }
+
+        function checkResumeState() {
+            if (needResumeModal && isPartnerTouching && !isHolding) {
+                const partnerName = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+                document.getElementById('hugModalTitle').innerText = `${partnerName} Seni Bekliyor!`;
+                hugUnlockModal.style.display = 'flex';
+            }
+            needResumeModal = false;
+        }
+
+        window.addEventListener('focus', checkResumeState);
+
+        function pulseHeartbeat() {
+            if (!navigator.vibrate) return;
+            try { navigator.vibrate([100, 60, 140]); } catch (err) { }
+        }
+
+        function startHugLoop() {
+            if (hugLoopInterval) return;
+            pulseHeartbeat();
+            hugLoopInterval = setInterval(() => {
+                if (!isHolding || !isPartnerTouching) {
+                    stopHugLoop();
+                    return;
+                }
+                pulseHeartbeat();
+            }, 1000);
+        }
+
+        function stopHugLoop() {
+            if (hugLoopInterval) {
+                clearInterval(hugLoopInterval);
+                hugLoopInterval = null;
+            }
+            if (navigator.vibrate) navigator.vibrate(0);
+        }
+
+        function updateTouchUI() {
+            const badge = document.getElementById('touchBadge');
+            const text = document.getElementById('touchStatusText');
+            const ring = document.getElementById('touchRing');
+            const partnerName = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+
+            if (!isPartnerTouching) {
+                hugUnlockModal.style.display = 'none';
+                hideInAppBanner();
+            }
+
+            if (isHolding && isPartnerTouching) {
+                hugUnlockModal.style.display = 'none';
+                hideInAppBanner();
+                badge.innerText = 'Sarılıyorsunuz ❤️';
+                badge.style.color = '#FF6B8B';
+                text.innerHTML = '✨ <strong>Kalpleriniz Birleşti!</strong> Şu an birbirinize sarılıyorsunuz...';
+                ring.style.borderColor = '#FF6B8B';
+                ring.style.boxShadow = '0 0 30px #FF6B8B';
+
+                startHugLoop();
+                confetti({ particleCount: 20, spread: 60, origin: { y: 0.55 }, colors: ['#FF6B8B', '#D4AF37', '#FFF'] });
+            } else if (!isHolding && isPartnerTouching) {
+                stopHugLoop();
+                badge.innerText = `${partnerName} Dokunuyor!`;
+                badge.style.color = '#34C759';
+                text.innerHTML = `❤️ <strong>${partnerName}</strong> ekrana dokunuyor! Sen de bas ve sarılın...`;
+                ring.style.borderColor = '#34C759';
+                ring.style.boxShadow = '0 0 20px #34C759';
+            } else if (isHolding && !isPartnerTouching) {
+                stopHugLoop();
+                badge.innerText = 'Bekleniyor...';
+                badge.style.color = '#D4AF37';
+                text.innerHTML = `✨ Parmağını çekme, <strong>${partnerName}</strong> bekleniyor...`;
+                ring.style.borderColor = '#D4AF37';
+                ring.style.boxShadow = 'none';
+            } else {
+                stopHugLoop();
+                badge.innerText = 'Beklemede';
+                badge.style.color = 'var(--text-muted)';
+                text.innerText = 'Parmağını basılı tutarak temas başlat...';
+                ring.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+                ring.style.boxShadow = 'none';
+            }
+        }
+
+        function startTouch(e) {
+            if (e && e.button !== undefined && e.button !== 0) return;
+            if (!currentUser) return;
+            if (isHolding) return;
+            isHolding = true;
+
+            touchBtn.classList.add('active-hold');
+            const iconEl = document.getElementById('touchBtnIcon');
+            if (iconEl) iconEl.innerText = '💖';
+
+            hideInAppBanner();
+            updateTouchUI();
+            if (!isPartnerTouching && navigator.vibrate) {
+                navigator.vibrate(40);
+            }
+
+            db.ref(`touch_presence/${currentUser}`).set({
+                touching: true,
+                timestamp: Date.now()
+            });
+
+            logActivity('SARILMA_BAŞLATTI', 'Sarılma butonuna parmağını koydu');
+
+            const now = Date.now();
+            if (!isPartnerTouching && (now - lastTouchNotifTime > 25000)) {
+                lastTouchNotifTime = now;
+                sendPushViaOneSignal(
+                    `🫂 ${currentUser} sana sarılmak istiyor!`,
+                    `Şu an ekranda parmağını tutuyor. Gel ve sarılın... ❤️`
+                );
+            }
+        }
+
+        function endTouch(e) {
+            if (!currentUser || !isHolding) return;
+            isHolding = false;
+
+            touchBtn.classList.remove('active-hold');
+            const iconEl = document.getElementById('touchBtnIcon');
+            if (iconEl) iconEl.innerText = '🫀';
+
+            updateTouchUI();
+
+            db.ref(`touch_presence/${currentUser}`).set({
+                touching: false,
+                timestamp: Date.now()
+            });
+            logActivity('SARILMA_BITTI', 'Sarılma butonundan parmağını çekti');
+        }
+
+        touchBtn.addEventListener('touchstart', startTouch, { passive: true });
+        window.addEventListener('touchend', endTouch);
+        window.addEventListener('touchcancel', endTouch);
+        touchBtn.addEventListener('mousedown', startTouch);
+        window.addEventListener('mouseup', endTouch);
+
+        db.ref('touch_presence').on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            const partnerName = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+            const partnerData = currentUser === 'Atakan' ? data.Cemre : data.Atakan;
+
+            isPartnerTouching = Boolean(partnerData && partnerData.touching);
+
+            if (!prevPartnerTouching && isPartnerTouching && !isHolding) {
+                if (!document.hidden) {
+                    playHarpChime();
+                    if (navigator.vibrate) navigator.vibrate([70, 50, 70]);
+                    showInAppBanner(partnerName);
+                }
+            }
+
+            if (!isPartnerTouching) {
+                hideInAppBanner();
+            }
+
+            prevPartnerTouching = isPartnerTouching;
+            updateTouchUI();
+        });
+
+        // 13. HARİTA (LEAFLET)
+        let memoryMap = null;
+        let markersLayer = null;
+        let selectedLatLng = null;
+
+        const goldHeartPin = L.divIcon({
+            className: 'custom-gold-pin',
+            html: `
+                <div style="
+                  background: radial-gradient(circle, #D4AF37 0%, #996515 100%);
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 50% 50% 50% 0;
+                  transform: rotate(-45deg);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  box-shadow: 0 0 15px rgba(212, 175, 55, 0.7);
+                  border: 1.5px solid #FFFFFF;
+                  cursor: pointer;
+                ">
+                  <span style="transform: rotate(45deg); font-size: 14px;">💖</span>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        });
+
+        function initMap() {
+            memoryMap = L.map('memoryMap', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([38.4237, 27.1428], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                subdomains: ['a', 'b', 'c']
+            }).addTo(memoryMap);
+
+            markersLayer = L.layerGroup().addTo(memoryMap);
+
+            memoryMap.on('click', (e) => {
+                selectedLatLng = e.latlng;
+                openMapModal();
+            });
+
+            setTimeout(() => { memoryMap.invalidateSize(); }, 600);
+        }
+
+        function openMapModal() {
+            document.getElementById('mapMemoryModal').style.display = 'flex';
+            document.getElementById('memoryTitle').value = '';
+            document.getElementById('memoryDate').value = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('memoryNote').value = '';
+            document.getElementById('mapModalCoordsDesc').innerText = `Seçilen Konum: [${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)}]`;
+        }
+
+        function closeMapModal() {
+            document.getElementById('mapMemoryModal').style.display = 'none';
+            selectedLatLng = null;
+        }
+
+        function promptCenterAddMemory() {
+            selectedLatLng = memoryMap.getCenter();
+            openMapModal();
+        }
+
+        function saveMapMemory() {
+            const title = document.getElementById('memoryTitle').value.trim();
+            const date = document.getElementById('memoryDate').value.trim();
+            const note = document.getElementById('memoryNote').value.trim();
+
+            if (!title || !selectedLatLng || !currentUser) {
+                alert('Lütfen bir başlık girin!');
+                return;
+            }
+
+            db.ref('our_map_memories').push({
+                title: title,
+                date: date || 'Özel Bir Gün',
+                note: note || 'Burada kalbimiz birlikte attı...',
+                lat: selectedLatLng.lat,
+                lng: selectedLatLng.lng,
+                creator: currentUser,
+                timestamp: Date.now()
+            });
+
+            closeMapModal();
+            playHarpChime();
+            confetti({ particleCount: 35, spread: 60, origin: { y: 0.6 }, colors: ['#D4AF37', '#FF6B8B', '#FFF'] });
+            logActivity('HARİTA_ANI_EKLEDİ', `Haritaya yeni anı ekledi: "${title}"`);
+        }
+
+        function deleteMapMemory(id) {
+            if (confirm('Bu özel anıyı haritadan kaldırmak istiyor musun?')) {
+                db.ref(`our_map_memories/${id}`).remove();
+                logActivity('HARİTA_ANI_SİLDİ', 'Haritadan bir anıyı sildi');
+            }
+        }
+
+        db.ref('our_map_memories').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!markersLayer) return;
+
+            markersLayer.clearLayers();
+
+            if (!data) {
+                document.getElementById('mapBadge').innerText = '0 Anı Mühürlendi';
+                return;
+            }
+
+            const memories = Object.entries(data);
+            document.getElementById('mapBadge').innerText = `${memories.length} Anı Mühürlendi`;
+
+            const bounds = [];
+
+            memories.forEach(([id, mem]) => {
+                bounds.push([mem.lat, mem.lng]);
+
+                const marker = L.marker([mem.lat, mem.lng], { icon: goldHeartPin });
+
+                const popupContent = `
+                  <div class="memory-popup">
+                    <h4 class="memory-popup-title">${escapeHtml(mem.title)}</h4>
+                    <span class="memory-popup-date">📅 ${escapeHtml(mem.date)}</span>
+                    <p class="memory-popup-note">“${escapeHtml(mem.note)}”</p>
+                    <div class="memory-popup-footer">
+                      <span>Mühürleyen: <strong style="color: #F7E7CE;">${escapeHtml(mem.creator)}</strong></span>
+                      <button class="memory-delete-btn" onclick="deleteMapMemory('${id}')">🗑️ Sil</button>
+                    </div>
+                  </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                marker.on('click', () => {
+                    logActivity('HARİTA_ANI_İNCELEDİ', `"${mem.title}" anısına tıkladı ve detayını okudu`);
+                });
+
+                markersLayer.addLayer(marker);
+            });
+
+            if (bounds.length > 0) {
+                memoryMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+            }
+        });
+
+        // Harita Mekan Arama
+        let searchDebounceTimer = null;
+        let tempSearchMarker = null;
+
+        function handleMapSearch(query) {
+            const clearBtn = document.getElementById('mapSearchClearBtn');
+            const dropdown = document.getElementById('mapSearchResults');
+            const icon = document.getElementById('mapSearchIcon');
+
+            clearBtn.style.display = query.length > 0 ? 'block' : 'none';
+
+            if (query.trim().length < 3) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            clearTimeout(searchDebounceTimer);
+            icon.innerText = '⏳';
+
+            searchDebounceTimer = setTimeout(() => {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+
+                fetch(url)
+                    .then(res => res.json())
+                    .then(results => {
+                        icon.innerText = '🔍';
+                        dropdown.innerHTML = '';
+
+                        if (!results || results.length === 0) {
+                            dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--text-muted); text-align: center;">Mekan bulunamadı.</div>';
+                            dropdown.style.display = 'flex';
+                            return;
+                        }
+
+                        results.forEach(item => {
+                            const mainName = item.name || item.display_name.split(',')[0];
+                            const subName = item.display_name;
+
+                            const div = document.createElement('div');
+                            div.className = 'search-result-item';
+                            div.innerHTML = `
+                                <span class="search-result-title">📍 ${escapeHtml(mainName)}</span>
+                                <span class="search-result-sub">${escapeHtml(subName)}</span>
+                            `;
+                            div.onclick = () => selectSearchResult(item, mainName);
+                            dropdown.appendChild(div);
+                        });
+
+                        dropdown.style.display = 'flex';
+                    })
+                    .catch(() => {
+                        icon.innerText = '🔍';
+                        dropdown.style.display = 'none';
+                    });
+            }, 400);
+        }
+
+        function selectSearchResult(item, mainName) {
+            const lat = parseFloat(item.lat);
+            const lng = parseFloat(item.lon);
+            selectedLatLng = L.latLng(lat, lng);
+
+            memoryMap.flyTo([lat, lng], 17, { duration: 1.5 });
+
+            if (tempSearchMarker) memoryMap.removeLayer(tempSearchMarker);
+            tempSearchMarker = L.circleMarker([lat, lng], {
+                radius: 10,
+                color: '#D4AF37',
+                fillColor: '#FF6B8B',
+                fillOpacity: 0.8,
+                weight: 3
+            }).addTo(memoryMap);
+
+            document.getElementById('mapSearchResults').style.display = 'none';
+            document.getElementById('mapSearchInput').value = mainName;
+            logActivity('HARİTA_ARAMA', `Haritada mekan aradı: "${mainName}"`);
+
+            setTimeout(() => {
+                openMapModal();
+                document.getElementById('memoryTitle').value = mainName;
+            }, 1600);
+        }
+
+        function clearMapSearch() {
+            document.getElementById('mapSearchInput').value = '';
+            document.getElementById('mapSearchResults').style.display = 'none';
+            document.getElementById('mapSearchClearBtn').style.display = 'none';
+            if (tempSearchMarker) {
+                memoryMap.removeLayer(tempSearchMarker);
+                tempSearchMarker = null;
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const wrapper = document.querySelector('.map-search-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                const dropdown = document.getElementById('mapSearchResults');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+        });
+
+        // CANLI GPS & KONUM TAKİBİ
+        let liveLocationMarkers = {};
+        let myLastLiveCoords = null;
+
+        function createLiveUserIcon(user) {
+            const isAtakan = user === 'Atakan';
+            const pulseColor = isAtakan ? 'rgba(212, 175, 55, 0.6)' : 'rgba(255, 107, 139, 0.6)';
+            const bgGradient = isAtakan
+                ? 'radial-gradient(circle, #D4AF37 0%, #1A1508 100%)'
+                : 'radial-gradient(circle, #FF6B8B 0%, #1F0E14 100%)';
+            const emoji = isAtakan ? '👑' : '💎';
+
+            return L.divIcon({
+                className: 'live-user-marker',
+                html: `
+                    <div class="live-user-pulse" style="background: ${pulseColor};"></div>
+                    <div class="live-user-avatar" style="background: ${bgGradient};">
+                        ${emoji}
+                    </div>
+                `,
+                iconSize: [46, 46],
+                iconAnchor: [23, 23],
+                popupAnchor: [0, -20]
+            });
+        }
+
+        function startLiveLocationTracking() {
+            if (!('geolocation' in navigator) || !currentUser) return;
+
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = Math.round(position.coords.accuracy || 0);
+
+                    myLastLiveCoords = [lat, lng];
+
+                    db.ref(`live_locations/${currentUser}`).set({
+                        lat: lat,
+                        lng: lng,
+                        accuracy: accuracy,
+                        timestamp: Date.now()
+                    });
+                },
+                (err) => {
+                    console.warn("GPS Hatası:", err.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 3000,
+                    timeout: 10000
+                }
+            );
+        }
+
+        function listenLiveLocations() {
+            db.ref('live_locations').on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                if (!memoryMap) return;
+
+                ['Atakan', 'Cemre'].forEach(user => {
+                    const loc = data[user];
+                    if (!loc || !loc.lat || !loc.lng) return;
+
+                    const isOnline = (Date.now() - (loc.timestamp || 0)) < 120000;
+                    const latLng = [loc.lat, loc.lng];
+                    const userName = user === 'Atakan' ? '👑 Atakan' : '💎 Cemre';
+                    const timeStr = new Date(loc.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+                    const popupText = `
+                        <div style="text-align: center; padding: 4px;">
+                            <strong style="color: #F7E7CE; font-size: 13px;">${userName}</strong><br>
+                            <span style="font-size: 11px; color: ${isOnline ? '#34C759' : '#8E8E93'};">
+                                ${isOnline ? '● Canlı Konum' : '○ Son Görülme: ' + timeStr}
+                            </span><br>
+                            <span style="font-size: 10px; color: var(--gold);">±${loc.accuracy}m hassasiyet</span>
+                        </div>
+                    `;
+
+                    if (liveLocationMarkers[user]) {
+                        liveLocationMarkers[user].setLatLng(latLng);
+                        liveLocationMarkers[user].setPopupContent(popupText);
+                    } else {
+                        liveLocationMarkers[user] = L.marker(latLng, {
+                            icon: createLiveUserIcon(user),
+                            zIndexOffset: 1000
+                        }).addTo(memoryMap).bindPopup(popupText);
+                    }
+                });
+            });
+        }
+
+        function centerOnMyLiveLocation() {
+            if (myLastLiveCoords && memoryMap) {
+                memoryMap.flyTo(myLastLiveCoords, 16, { duration: 1.2 });
+            } else {
+                alert('GPS konumunuz alınıyor, lütfen birkaç saniye bekleyin...');
+            }
+        }
+
+        // 14. YOUTUBE OYNATICI
+        let ytPlayer = null;
+        let isRemoteAction = false;
+        let isYtReady = false;
+        let currentVideoId = "jfKfPfyJRdk";
+        let lastKnownState = null;
+        let lastLocalTime = 0;
+        let lastLocalTimestamp = Date.now();
+        let lastSyncedTime = 0;
+        let seekCheckInterval = null;
+        let lastServerSyncData = null;
+        let heartbeatInterval = null;
+
+        function formatSeconds(sec) {
+            sec = Math.floor(sec || 0);
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function getCalculatedRoomTime(data) {
+            if (!data) return 0;
+            let t = Number(data.currentTime) || 0;
+            if (data.state === 'PLAYING' && data.timestamp) {
+                const elapsed = (Date.now() - data.timestamp) / 1000;
+                if (elapsed > 0) {
+                    t += elapsed;
+                }
+            }
+            return t;
+        }
+
+        window.onYouTubeIframeAPIReady = function () {
+            ytPlayer = new YT.Player('syncPlayer', {
+                videoId: currentVideoId,
+                playerVars: {
+                    'playsinline': 1,
+                    'rel': 0,
+                    'modestbranding': 1
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        };
+
+        function onPlayerReady() {
+            isYtReady = true;
+            listenWatchPartySync();
+            startSeekDetector();
+        }
+
+        function extractYouTubeID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : (url.length === 11 ? url : null);
+        }
+
+        function submitNewVideo() {
+            const input = document.getElementById('youtubeUrlInput');
+            const val = input.value.trim();
+            const vid = extractYouTubeID(val);
+
+            if (!vid) {
+                alert('Geçerli bir YouTube linki veya video ID girin!');
+                return;
+            }
+
+            input.value = '';
+            lastLocalTime = 0;
+            lastLocalTimestamp = Date.now();
+            lastSyncedTime = 0;
+
+            db.ref('watch_party_sync').set({
+                videoId: vid,
+                state: 'PLAYING',
+                currentTime: 0,
+                sender: currentUser,
+                timestamp: Date.now()
+            });
+
+            logActivity('YOUTUBE_YENİ_VİDEO', `Yeni video açtı: (ID: ${vid})`);
+        }
+
+        function startHeartbeat() {
+            stopHeartbeat();
+            heartbeatInterval = setInterval(() => {
+                if (!isYtReady || !ytPlayer || !ytPlayer.getCurrentTime || !currentUser) return;
+                if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && lastKnownState === 'PLAYING') {
+                    const curTime = ytPlayer.getCurrentTime();
+                    db.ref('watch_party_sync').update({
+                        currentTime: curTime,
+                        timestamp: Date.now()
+                    });
+                }
+            }, 4000);
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            if (isRemoteAction || !isYtReady || !currentUser) return;
+
+            const curTime = ytPlayer.getCurrentTime();
+            const now = Date.now();
+
+            if (event.data === YT.PlayerState.PLAYING) {
+                if (lastKnownState === 'PLAYING') return;
+
+                if (lastServerSyncData && lastServerSyncData.state === 'PLAYING' && lastServerSyncData.sender !== currentUser) {
+                    const targetRoomTime = getCalculatedRoomTime(lastServerSyncData);
+                    if (Math.abs(curTime - targetRoomTime) > 3) {
+                        isRemoteAction = true;
+                        ytPlayer.seekTo(targetRoomTime, true);
+                        lastSyncedTime = targetRoomTime;
+                        lastLocalTime = targetRoomTime;
+                        lastLocalTimestamp = now;
+                        setTimeout(() => { isRemoteAction = false; }, 1200);
+                        return;
+                    }
+                }
+
+                startHeartbeat();
+                lastKnownState = 'PLAYING';
+                lastSyncedTime = curTime;
+                lastLocalTime = curTime;
+                lastLocalTimestamp = now;
+
+                db.ref('watch_party_sync').set({
+                    videoId: currentVideoId,
+                    state: 'PLAYING',
+                    currentTime: curTime,
+                    sender: currentUser,
+                    timestamp: now
+                });
+                logActivity('YOUTUBE_OYNATTI', `Videoyu oynattı (${formatSeconds(curTime)})`);
+            } else if (event.data === YT.PlayerState.PAUSED) {
+                if (lastKnownState === 'PAUSED') return;
+
+                stopHeartbeat();
+                lastKnownState = 'PAUSED';
+                lastSyncedTime = curTime;
+                lastLocalTime = curTime;
+                lastLocalTimestamp = now;
+
+                db.ref('watch_party_sync').set({
+                    videoId: currentVideoId,
+                    state: 'PAUSED',
+                    currentTime: curTime,
+                    sender: currentUser,
+                    timestamp: now
+                });
+                logActivity('YOUTUBE_DURAKLATTI', `Videoyu duraklattı (${formatSeconds(curTime)})`);
+            } else if (event.data === YT.PlayerState.ENDED) {
+                stopHeartbeat();
+                if (isPiPActive) disablePiP();
+            }
+        }
+
+        function startSeekDetector() {
+            if (seekCheckInterval) clearInterval(seekCheckInterval);
+
+            seekCheckInterval = setInterval(() => {
+                if (!isYtReady || isRemoteAction || !currentUser || !ytPlayer || !ytPlayer.getCurrentTime) return;
+
+                const playerState = ytPlayer.getPlayerState();
+                if (playerState !== YT.PlayerState.PLAYING && playerState !== YT.PlayerState.PAUSED) return;
+
+                const curTime = ytPlayer.getCurrentTime();
+                const now = Date.now();
+
+                let expectedTime = lastLocalTime;
+                if (playerState === YT.PlayerState.PLAYING) {
+                    const elapsed = (now - lastLocalTimestamp) / 1000;
+                    expectedTime = lastLocalTime + elapsed;
+                }
+
+                if (Math.abs(curTime - expectedTime) > 3) {
+                    lastLocalTime = curTime;
+                    lastLocalTimestamp = now;
+                    lastSyncedTime = curTime;
+
+                    const stateStr = (playerState === YT.PlayerState.PAUSED) ? 'PAUSED' : 'PLAYING';
+
+                    db.ref('watch_party_sync').set({
+                        videoId: currentVideoId,
+                        state: stateStr,
+                        currentTime: curTime,
+                        sender: currentUser,
+                        timestamp: now
+                    });
+                    logActivity('YOUTUBE_SÜRE_ATLADI', `Süreyi ${formatSeconds(curTime)} dakikaya sardı`);
+                } else {
+                    lastLocalTime = curTime;
+                    lastLocalTimestamp = now;
+                }
+            }, 600);
+        }
+
+        function manualJoinSync() {
+            if (!lastServerSyncData || !ytPlayer) return;
+            const targetTime = getCalculatedRoomTime(lastServerSyncData);
+            isRemoteAction = true;
+            ytPlayer.seekTo(targetTime, true);
+            ytPlayer.playVideo();
+            if (navigator.vibrate) navigator.vibrate(40);
+
+            const btn = document.getElementById('joinSyncBtn');
+            if (btn) btn.style.display = 'none';
+
+            setTimeout(() => {
+                isRemoteAction = false;
+                lastLocalTime = ytPlayer.getCurrentTime();
+                lastLocalTimestamp = Date.now();
+            }, 1200);
+        }
+
+        function listenWatchPartySync() {
+            db.ref('watch_party_sync').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data || !isYtReady) return;
+
+                lastServerSyncData = data;
+                const statusEl = document.getElementById('watchStatusText');
+                const badgeEl = document.getElementById('watchSyncBadge');
+                const joinSyncBtn = document.getElementById('joinSyncBtn');
+
+                badgeEl.innerText = '● Canlı Senkron';
+                badgeEl.style.color = '#34C759';
+
+                if (data.videoId && data.videoId !== currentVideoId) {
+                    currentVideoId = data.videoId;
+                    isRemoteAction = true;
+                    const startTime = getCalculatedRoomTime(data);
+                    ytPlayer.loadVideoById(currentVideoId, startTime);
+                    setTimeout(() => { isRemoteAction = false; }, 1500);
+                }
+
+                if (data.sender !== currentUser) {
+                    const calculatedTime = getCalculatedRoomTime(data);
+
+                    if (data.state === 'PLAYING') {
+                        statusEl.innerHTML = `▶️ <strong>${escapeHtml(data.sender)}</strong> oynatıyor (${formatSeconds(calculatedTime)})...`;
+
+                        const localPlayerState = (ytPlayer && ytPlayer.getPlayerState) ? ytPlayer.getPlayerState() : -1;
+
+                        if (localPlayerState !== YT.PlayerState.PLAYING && joinSyncBtn) {
+                            joinSyncBtn.style.display = 'flex';
+                            joinSyncBtn.innerHTML = `⚡ ${escapeHtml(data.sender)}'a Katıl (${formatSeconds(calculatedTime)})`;
+                        } else if (joinSyncBtn) {
+                            joinSyncBtn.style.display = 'none';
+                        }
+
+                        const localTime = (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() : 0;
+                        if (Math.abs(localTime - calculatedTime) > 3) {
+                            isRemoteAction = true;
+                            ytPlayer.seekTo(calculatedTime, true);
+                            setTimeout(() => { isRemoteAction = false; }, 1000);
+                        }
+
+                        if (localPlayerState !== YT.PlayerState.PLAYING) {
+                            isRemoteAction = true;
+                            ytPlayer.playVideo();
+                            setTimeout(() => { isRemoteAction = false; }, 1000);
+                        }
+                    } else if (data.state === 'PAUSED') {
+                        stopHeartbeat();
+                        if (joinSyncBtn) joinSyncBtn.style.display = 'none';
+                        statusEl.innerHTML = `⏸️ <strong>${escapeHtml(data.sender)}</strong> duraklattı (${formatSeconds(data.currentTime || 0)}).`;
+
+                        lastKnownState = 'PAUSED';
+                        isRemoteAction = true;
+
+                        const localTime = (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() : 0;
+                        if (Math.abs(localTime - (data.currentTime || 0)) > 2) {
+                            ytPlayer.seekTo(data.currentTime || 0, true);
+                        }
+                        ytPlayer.pauseVideo();
+
+                        setTimeout(() => {
+                            isRemoteAction = false;
+                        }, 1200);
+                    }
+                } else {
+                    if (joinSyncBtn) joinSyncBtn.style.display = 'none';
+                    if (data.state === 'PLAYING') {
+                        statusEl.innerHTML = `▶️ Sen oynatıyorsun...`;
+                    } else if (data.state === 'PAUSED') {
+                        statusEl.innerHTML = `⏸️ Sen duraklattın.`;
+                    }
+                }
+            });
+        }
+
+        // 15. AŞK XOX'U (İKİ KİŞİLİK CANLI OYUN MOTORU)
+        let xoxState = null;
+        const XOX_WIN_PATTERNS = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Satırlar
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Sütunlar
+            [0, 4, 8], [2, 4, 6]             // Çaprazlar
+        ];
+
+        function checkXoxWin(board) {
+            for (let pattern of XOX_WIN_PATTERNS) {
+                const [a, b, c] = pattern;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { winnerSymbol: board[a], pattern };
+                }
+            }
+            if (board.every(cell => cell !== "")) {
+                return { winnerSymbol: "draw", pattern: null };
+            }
+            return null;
+        }
+
+        function handleCellClick(index) {
+            if (!currentUser) {
+                alert('Lütfen önce profilinizi seçin!');
+                return;
+            }
+            if (!xoxState) return;
+
+            if (xoxState.winner) {
+                if (navigator.vibrate) navigator.vibrate(30);
+                return;
+            }
+
+            if (xoxState.turn !== currentUser) {
+                if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+                const partner = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+                alert(`Sıra ${partner}'de! Hamlesini bekle... ❤️`);
+                return;
+            }
+
+            if (xoxState.board[index] !== "") return;
+
+            const mySymbol = currentUser === 'Atakan' ? '👑' : '💎';
+            const newBoard = [...xoxState.board];
+            newBoard[index] = mySymbol;
+
+            if (navigator.vibrate) navigator.vibrate(40);
+            playHarpChime();
+
+            const winResult = checkXoxWin(newBoard);
+            const nextTurn = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+
+            if (winResult) {
+                if (winResult.winnerSymbol === "draw") {
+                    const newDraws = (xoxState.scores?.draws || 0) + 1;
+                    db.ref('xox_game').update({
+                        board: newBoard,
+                        winner: "draw",
+                        winningLine: null,
+                        "scores/draws": newDraws,
+                        lastMoveUser: currentUser,
+                        timestamp: Date.now()
+                    });
+                    logActivity('XOX_BERABERE', 'XOX oyununu berabere bitirdiler 🤝');
+                } else {
+                    const newScore = (xoxState.scores?.[currentUser] || 0) + 1;
+                    db.ref('xox_game').update({
+                        board: newBoard,
+                        winner: currentUser,
+                        winningLine: winResult.pattern,
+                        [`scores/${currentUser}`]: newScore,
+                        lastMoveUser: currentUser,
+                        timestamp: Date.now()
+                    });
+                    logActivity('XOX_KAZANDI', `XOX oyununu kazandı! 🎉 (Skor: ${newScore})`);
+
+                    sendPushViaOneSignal(
+                        `🎮 ${currentUser} XOX'u Kazandı!`,
+                        `👑 Atakan vs 💎 Cemre kapışmasında zafer ${currentUser}'ın oldu! 🏆`
+                    );
+                }
+            } else {
+                db.ref('xox_game').update({
+                    board: newBoard,
+                    turn: nextTurn,
+                    lastMoveUser: currentUser,
+                    timestamp: Date.now()
+                });
+                logActivity('XOX_HAMLE', `XOX tahtasında ${index + 1}. kareye hamle yaptı`);
+            }
+        }
+
+        // Yeni Tur: Önceki turu kim başlattıysa tam tersi başlar
+        function resetXoxRound() {
+            if (!currentUser) return;
+            const previousStarter = (xoxState && xoxState.starter) ? xoxState.starter : (xoxState && xoxState.turn ? xoxState.turn : 'Atakan');
+            const nextStarter = previousStarter === 'Atakan' ? 'Cemre' : 'Atakan';
+
+            db.ref('xox_game').update({
+                board: ["", "", "", "", "", "", "", "", ""],
+                starter: nextStarter,
+                turn: nextStarter,
+                winner: null,
+                winningLine: null,
+                timestamp: Date.now()
+            });
+            if (navigator.vibrate) navigator.vibrate(40);
+            logActivity('XOX_YENİ_TUR', `Yeni tur başladı! Başlangıç hakkı: ${nextStarter}`);
+        }
+
+        // Skorları Sıfırla: Adil kura (%50 Atakan / %50 Cemre)
+        function resetXoxScores() {
+            if (!confirm('Tüm XOX skor geçmişini sıfırlamak istiyor musunuz?')) return;
+            const randomStarter = Math.random() < 0.5 ? 'Atakan' : 'Cemre';
+
+            db.ref('xox_game').set({
+                board: ["", "", "", "", "", "", "", "", ""],
+                starter: randomStarter,
+                turn: randomStarter,
+                winner: null,
+                winningLine: null,
+                scores: { Atakan: 0, Cemre: 0, draws: 0 },
+                timestamp: Date.now()
+            });
+            if (navigator.vibrate) navigator.vibrate(40);
+            logActivity('XOX_SKOR_SIFIRLA', `XOX skorları sıfırlandı. Kura ile ilk başlayan: ${randomStarter}`);
+        }
+
+        function listenXoxGame() {
+            db.ref('xox_game').on('value', (snapshot) => {
+                let data = snapshot.val();
+                if (!data || !data.board) {
+                    const randomStarter = Math.random() < 0.5 ? 'Atakan' : 'Cemre';
+                    data = {
+                        board: ["", "", "", "", "", "", "", "", ""],
+                        starter: randomStarter,
+                        turn: randomStarter,
+                        winner: null,
+                        winningLine: null,
+                        scores: { Atakan: 0, Cemre: 0, draws: 0 },
+                        timestamp: Date.now()
+                    };
+                    db.ref('xox_game').set(data);
+                    return;
+                }
+
+                const prevWinner = xoxState ? xoxState.winner : null;
+                xoxState = data;
+
+                // Kareleri doldur
+                const cells = document.querySelectorAll('.xox-cell');
+                data.board.forEach((val, i) => {
+                    if (cells[i]) {
+                        cells[i].innerText = val;
+                        cells[i].classList.remove('winner-cell');
+                        if (data.winningLine && data.winningLine.includes(i)) {
+                            cells[i].classList.add('winner-cell');
+                        }
+                    }
+                });
+
+                // Skorları göster
+                const scores = data.scores || { Atakan: 0, Cemre: 0, draws: 0 };
+                document.getElementById('xoxScoreAtakan').innerText = scores.Atakan || 0;
+                document.getElementById('xoxScoreCemre').innerText = scores.Cemre || 0;
+                document.getElementById('xoxScoreDraw').innerText = scores.draws || 0;
+
+                // Durum mesajı ve Rozet
+                const badge = document.getElementById('xoxBadge');
+                const statusBox = document.getElementById('xoxStatusText');
+
+                if (data.winner) {
+                    if (data.winner === 'draw') {
+                        badge.innerText = 'Dostluk Kazandı! 🤝';
+                        badge.style.color = 'var(--gold-light)';
+                        statusBox.innerHTML = '🤝 <strong>Berabere bitti!</strong> Sevgi kazandı, yeni bir tur başlatın...';
+                    } else {
+                        const winEmoji = data.winner === 'Atakan' ? '👑' : '💎';
+                        badge.innerText = `${data.winner} Kazandı! 🎉`;
+                        badge.style.color = data.winner === 'Atakan' ? '#D4AF37' : '#FF6B8B';
+                        statusBox.innerHTML = `🎉 <strong>${winEmoji} ${data.winner}</strong> bu turun galibi oldu!`;
+
+                        if (!prevWinner) {
+                            playHarpChime();
+                            if (navigator.vibrate) navigator.vibrate([80, 50, 150]);
+                            confetti({
+                                particleCount: 50,
+                                spread: 75,
+                                origin: { y: 0.6 },
+                                colors: ['#D4AF37', '#FF6B8B', '#FFFFFF', '#7AE582']
+                            });
+                        }
+                    }
+                } else {
+                    const isMyTurn = (data.turn === currentUser);
+                    const turnEmoji = data.turn === 'Atakan' ? '👑' : '💎';
+                    badge.innerText = `${turnEmoji} ${data.turn}'ın Sırası`;
+                    badge.style.color = isMyTurn ? '#34C759' : 'var(--gold)';
+
+                    if (isMyTurn) {
+                        statusBox.innerHTML = `✨ <strong>Senin sıran!</strong> Boş bir kare seç ve hamleni yap...`;
+                    } else {
+                        statusBox.innerHTML = `⏳ <strong>${data.turn}</strong> düşünüyor... Hamlesi bekleniyor.`;
+                    }
+                }
+            });
+        }
+
+        // 16. ÇARKI FELEK
+        const wheelCanvas = document.getElementById('wheelCanvas');
+        const ctx = wheelCanvas.getContext('2d');
+        const spinWheelBtn = document.getElementById('spinWheelBtn');
+
+        const wheelSlices = [
+            { text: "Kahve Ismarla ☕", bg: "#1D1913", color: "#F3E5AB" },
+            { text: "30sn Sarıl 🫂", bg: "#2E1724", color: "#FF8DA1" },
+            { text: "Masaj Yap 💆", bg: "#151522", color: "#F7E7CE" },
+            { text: "Tatlı Ismarla 🍦", bg: "#261D12", color: "#D4AF37" },
+            { text: "Film Seçimi 🎬", bg: "#132219", color: "#7AE582" },
+            { text: "Uzun Öpücük 💋", bg: "#36121E", color: "#FF758F" },
+            { text: "Yemek Sende 🍝", bg: "#20172B", color: "#D8B4E2" },
+            { text: "1 Dilek Hakkı ✨", bg: "#2B2411", color: "#FFE066" }
+        ];
+
+        const totalSlices = wheelSlices.length;
+        const sliceAngle = (2 * Math.PI) / totalSlices;
+        let currentWheelAngle = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            const centerX = wheelCanvas.width / 2;
+            const centerY = wheelCanvas.height / 2;
+            const radius = centerX - 12;
+
+            ctx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+
+            for (let i = 0; i < totalSlices; i++) {
+                const start = i * sliceAngle;
+                const end = start + sliceAngle;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, start, end);
+                ctx.closePath();
+                ctx.fillStyle = wheelSlices[i].bg;
+                ctx.fill();
+
+                ctx.strokeStyle = "rgba(212, 175, 55, 0.4)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                const midAngle = start + sliceAngle / 2;
+                ctx.rotate(midAngle);
+
+                ctx.fillStyle = wheelSlices[i].color;
+                ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+                ctx.shadowColor = "rgba(0,0,0,0.9)";
+                ctx.shadowBlur = 4;
+
+                if (midAngle > Math.PI / 2 && midAngle < 1.5 * Math.PI) {
+                    ctx.rotate(Math.PI);
+                    ctx.textAlign = "left";
+                    ctx.fillText(wheelSlices[i].text, -(radius - 22), 6);
+                } else {
+                    ctx.textAlign = "right";
+                    ctx.fillText(wheelSlices[i].text, radius - 22, 6);
+                }
+                ctx.restore();
+            }
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = "#D4AF37";
+            ctx.lineWidth = 6;
+            ctx.stroke();
+        }
+        drawWheel();
+
+        function requestSpin() {
+            if (isSpinning || !currentUser) return;
+            const randomIndex = Math.floor(Math.random() * totalSlices);
+
+            db.ref('wheel_sync').set({
+                spinner: currentUser,
+                targetIndex: randomIndex,
+                timestamp: Date.now()
+            });
+
+            logActivity('ÇARK_ÇEVİRDİ', 'Aşk Çarkıfeleği butonuna bastı');
+        }
+
+        function executeWheelSpin(targetIndex, spinner) {
+            if (isSpinning) return;
+            isSpinning = true;
+            spinWheelBtn.disabled = true;
+
+            document.getElementById('wheelResultBox').innerHTML = `
+                🎲 <strong>${escapeHtml(spinner)}</strong> çarkı çevirdi! Kader dönüyor...
+            `;
+
+            const sliceAngleDeg = 360 / totalSlices;
+            const sliceCenterDeg = (targetIndex * sliceAngleDeg) + (sliceAngleDeg / 2);
+            const targetStopDeg = 270 - sliceCenterDeg;
+
+            const currentMod = currentWheelAngle % 360;
+            let diff = (targetStopDeg - currentMod) % 360;
+            if (diff < 0) diff += 360;
+
+            currentWheelAngle += 1800 + diff;
+
+            wheelCanvas.style.transform = `rotate(${currentWheelAngle}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                spinWheelBtn.disabled = false;
+                playHarpChime();
+                if (navigator.vibrate) navigator.vibrate([80, 50, 150]);
+
+                confetti({
+                    particleCount: 50,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#D4AF37', '#FF6B8B', '#FFFFFF', '#7AE582']
+                });
+
+                const winnerSlice = wheelSlices[targetIndex].text;
+                document.getElementById('wheelResultBox').innerHTML = `
+                    🎉 <strong>${escapeHtml(spinner)}</strong> için çark durdu:<br>
+                    <span style="font-size: 16px; color: #F3E5AB; font-weight: 700; display: block; margin-top: 4px;">
+                        ${winnerSlice}
+                    </span>
+                `;
+            }, 4000);
+        }
+
+        let isInitialWheel = true;
+        db.ref('wheel_sync').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && !isInitialWheel) {
+                const isFresh = (Date.now() - data.timestamp) < 10000;
+                if (isFresh) {
+                    executeWheelSpin(data.targetIndex, data.spinner);
+                }
+            }
+            isInitialWheel = false;
+        });
+
+        // 17. SÜRPRİZ NOT & AŞK SANDIĞI (ARŞİV)
+        let activeArchiveFilter = 'all';
+        let cachedArchiveNotes = [];
+
+        function openNoteModal() {
+            document.getElementById('writeNoteModal').style.display = 'flex';
+            document.getElementById('noteInput').value = '';
+        }
+
+        function closeNoteModal() {
+            document.getElementById('writeNoteModal').style.display = 'none';
+        }
+
+        function submitNote() {
+            const text = document.getElementById('noteInput').value.trim();
+            if (!text) return;
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+
+            const notePayload = {
+                sender: currentUser,
+                text: text,
+                time: timeStr,
+                date: dateStr,
+                timestamp: Date.now(),
+                favorite: false
+            };
+
+            const newRef = db.ref('surprise_notes_archive').push(notePayload);
+
+            db.ref('daily_surprise_note').set({
+                ...notePayload,
+                id: newRef.key
+            });
+
+            closeNoteModal();
+            playHarpChime();
+            confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 }, colors: ['#D4AF37', '#FF6B8B', '#FFF'] });
+            alert('Sürpriz notun Aşk Sandığına mühürlendi ve iletildi! 💌');
+            logActivity('NOT_YAZDI', `Yeni mektup bıraktı: "${text.substring(0, 30)}..."`);
+
+            sendPushViaOneSignal(
+                `💌 ${currentUser}'dan Sürpriz Not!`,
+                `"${text}"`
+            );
+        }
+
+        function toggleNoteDisplay() {
+            const box = document.getElementById('noteDisplayBox');
+            const isOpening = (box.style.display === 'none' || box.style.display === '');
+            box.style.display = isOpening ? 'block' : 'none';
+            if (isOpening) {
+                logActivity('NOTU_OKUDU', 'Günün sürpriz not zarfına dokunup notu açtı');
+            }
+        }
+
+        db.ref('daily_surprise_note').on('value', (snapshot) => {
+            const note = snapshot.val();
+            if (note) {
+                document.getElementById('noteDisplay').innerText = `"${note.text}"`;
+                document.getElementById('noteAuthor').innerText = `— ${note.sender} (${note.date || ''}, ${note.time || ''})`;
+
+                const senderFrom = note.sender === 'Atakan' ? "Atakan'dan" : "Cemre'den";
+                const partnerTo = currentUser === 'Atakan' ? "Cemre'ye Notun 💌" : "Atakan'a Notun 💌";
+
+                if (note.sender === currentUser) {
+                    document.getElementById('noteBadge').innerText = partnerTo;
+                } else {
+                    document.getElementById('noteBadge').innerText = `${senderFrom} Yeni Not ✨`;
+                }
+                document.getElementById('noteBadge').style.color = '#F7E7CE';
+            }
+        });
+
+        function listenSurpriseNotesArchive() {
+            db.ref('surprise_notes_archive').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    cachedArchiveNotes = [];
+                    db.ref('daily_surprise_note').once('value', (dSnap) => {
+                        const dNote = dSnap.val();
+                        if (dNote && dNote.text) {
+                            db.ref('surprise_notes_archive').push(dNote);
+                        }
+                    });
+                } else {
+                    cachedArchiveNotes = Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse();
+                }
+
+                const countBadge = document.getElementById('archiveCountBadge');
+                if (countBadge) {
+                    countBadge.innerText = `${cachedArchiveNotes.length} Aşk Mektubu Saklanıyor`;
+                }
+
+                if (document.getElementById('notesArchiveModal').style.display !== 'none') {
+                    renderArchiveNotes();
+                }
+            });
+        }
+
+        function openNotesArchiveModal() {
+            document.getElementById('notesArchiveModal').style.display = 'flex';
+            logActivity('ARŞİV_AÇTI', 'Aşk Sandığını (Eski Mektupları) açtı 📜');
+            renderArchiveNotes();
+        }
+
+        function closeNotesArchiveModal() {
+            document.getElementById('notesArchiveModal').style.display = 'none';
+        }
+
+        function setArchiveFilter(filter) {
+            activeArchiveFilter = filter;
+            ['all', 'Atakan', 'Cemre', 'fav'].forEach(f => {
+                const btn = document.getElementById(`archive-filter-${f}`);
+                if (btn) btn.classList.remove('active');
+            });
+            const activeBtn = document.getElementById(`archive-filter-${filter}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            renderArchiveNotes();
+        }
+
+        function toggleFavoriteNote(id, currentStatus) {
+            if (!id) return;
+            const newStatus = !currentStatus;
+            db.ref(`surprise_notes_archive/${id}`).update({ favorite: newStatus });
+            if (newStatus) {
+                if (navigator.vibrate) navigator.vibrate(50);
+                confetti({ particleCount: 25, spread: 50, origin: { y: 0.65 }, colors: ['#FFD700', '#FFF'] });
+            }
+            logActivity('NOT_FAVORİ', `Bir mektubu favorilere ${newStatus ? 'ekledi ⭐' : 'çıkardı'}`);
+        }
+
+        function renderArchiveNotes() {
+            const container = document.getElementById('archiveNotesList');
+            if (!container) return;
+
+            let filtered = cachedArchiveNotes;
+            if (activeArchiveFilter === 'fav') {
+                filtered = cachedArchiveNotes.filter(n => Boolean(n.favorite));
+            } else if (activeArchiveFilter !== 'all') {
+                filtered = cachedArchiveNotes.filter(n => n.sender === activeArchiveFilter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="empty-state">Bu sandıkta henüz mektup bulunmuyor.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            filtered.forEach(note => {
+                const isAtakan = note.sender === 'Atakan';
+                const card = document.createElement('div');
+                card.className = 'archive-letter-card';
+                card.style.borderLeft = `3.5px solid ${isAtakan ? '#D4AF37' : '#FF6B8B'}`;
+
+                const safeText = escapeHtml(note.text);
+                const safeDate = escapeHtml(note.date || '');
+                const safeTime = escapeHtml(note.time || '');
+                const isFav = Boolean(note.favorite);
+
+                card.innerHTML = `
+                    <div class="archive-letter-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 700; font-size: 12px; color: ${isAtakan ? '#F7E7CE' : '#FFB6C1'};">
+                                ${isAtakan ? '👑 Atakan' : '💎 Cemre'}
+                            </span>
+                            <span style="font-size: 10px; color: var(--text-muted);">${safeDate} · ${safeTime}</span>
+                        </div>
+                        <button class="archive-fav-btn ${isFav ? 'is-fav' : ''}" onclick="toggleFavoriteNote('${note.id}', ${isFav})" title="${isFav ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
+                            ${isFav ? '★' : '☆'}
+                        </button>
+                    </div>
+                    <div class="archive-letter-text">“${safeText}”</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 18. BUCKET LIST
+        function addBucketItem() {
+            const input = document.getElementById('bucketInput');
+            const text = input.value.trim();
+            if (!text || !currentUser) return;
+
+            db.ref('bucket_list').push({
+                text: text,
+                creator: currentUser,
+                completed: false,
+                timestamp: Date.now()
+            });
+
+            input.value = '';
+            if (navigator.vibrate) navigator.vibrate(40);
+            logActivity('HAYAL_EKLEDİ', `Hayal listesine yeni madde yazdı: "${text}"`);
+        }
+
+        function toggleBucketItem(id, currentStatus) {
+            db.ref(`bucket_list/${id}`).update({ completed: !currentStatus });
+            if (!currentStatus) {
+                confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 }, colors: ['#D4AF37', '#FFF'] });
+                if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+            }
+            logActivity('HAYAL_GÜNCELLEDİ', `Bir hayali ${!currentStatus ? 'tamamlandı' : 'tamamlanmadı'} yaptı`);
+        }
+
+        function deleteBucketItem(e, id) {
+            e.stopPropagation();
+            if (confirm('Bu hayali listeden silmek istiyor musun?')) {
+                db.ref(`bucket_list/${id}`).remove();
+                logActivity('HAYAL_SİLDİ', 'Hayal listesinden bir maddeyi sildi');
+            }
+        }
+
+        db.ref('bucket_list').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const container = document.getElementById('bucketListContainer');
+            container.innerHTML = '';
+
+            if (!data) {
+                container.innerHTML = '<div class="empty-state">Birlikte gerçekleştirmek istediğiniz bir hayali ekleyin ✨</div>';
+                document.getElementById('bucketCountBadge').innerText = '0 Tamamlandı';
+                return;
+            }
+
+            const items = Object.entries(data);
+            let completedCount = 0;
+
+            items.forEach(([id, item]) => {
+                if (item.completed) completedCount++;
+                const row = document.createElement('div');
+                row.className = `bucket-item ${item.completed ? 'completed' : ''}`;
+                row.onclick = () => toggleBucketItem(id, item.completed);
+                row.innerHTML = `
+                    <div class="bucket-item-left">
+                        <div class="bucket-check">${item.completed ? '✓' : ''}</div>
+                        <span class="bucket-text">${escapeHtml(item.text)}</span>
+                    </div>
+                    <button class="bucket-delete-btn" onclick="deleteBucketItem(event, '${id}')">✕</button>
+                `;
+                container.appendChild(row);
+            });
+
+            document.getElementById('bucketCountBadge').innerText = `${completedCount} / ${items.length} Tamamlandı`;
+        });
+
+        // 19. CANLI TELEPATİ LİSTESİ
+        db.ref('telepati_events').limitToLast(5).on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const listEl = document.getElementById('historyList');
+                listEl.innerHTML = '';
+                const items = Object.values(data).reverse();
+                const latest = items[0];
+
+                let actionText = "seni düşünüyor 💖";
+                if (latest.type === 'morning') actionText = "sana günaydın öpücüğü gönderdi ☀️";
+                if (latest.type === 'night') actionText = "sana huzurlu bir gece diledi 🌙";
+
+                document.getElementById('statusMessage').innerHTML = `
+                    ✨ <strong>${escapeHtml(latest.sender)}</strong>, ${actionText} (${latest.time})
+                `;
+
+                items.forEach(item => {
+                    let rowLabel = `${item.sender} seni düşündü`;
+                    let rowIcon = item.sender === 'Atakan' ? '👑' : '💎';
+                    if (item.type === 'morning') rowLabel = `${item.sender} günaydın dedi ☀️`;
+                    if (item.type === 'night') rowLabel = `${item.sender} iyi geceler dedi 🌙`;
+
+                    const row = document.createElement('div');
+                    row.className = 'history-item';
+                    row.innerHTML = `
+                        <span class="history-item-user">${rowIcon} ${escapeHtml(rowLabel)}</span>
+                        <span class="history-item-time">${escapeHtml(item.time)}</span>
+                    `;
+                    listEl.appendChild(row);
+                });
+            }
+        });
+
+        db.ref('total_thoughts').on('value', (snapshot) => {
+            document.getElementById('totalCountDisplay').innerText = snapshot.val() || 0;
+        });
+
+        // 20. BİLDİRİM İZNİ
+        function requestNotification(showFeedback = true) {
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            OneSignalDeferred.push(async function (OneSignal) {
+                await OneSignal.Notifications.requestPermission();
+                if (currentUser) {
+                    await OneSignal.login(currentUser);
+                }
+                await OneSignal.User.PushSubscription.optIn();
+                if (showFeedback) alert('Bildirim izni kaydedildi! 💖');
+            });
+        }
+
+        // 21. CANLI PİL & DONANIM RADARI
+        function initBatteryAndPresence() {
+            if (!currentUser) return;
+
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(battery => {
+                    const syncBattery = () => {
+                        db.ref(`device_presence/${currentUser}`).update({
+                            battery: Math.round(battery.level * 100),
+                            charging: battery.charging,
+                            lastSeen: Date.now()
+                        });
+                    };
+
+                    syncBattery();
+                    battery.addEventListener('levelchange', syncBattery);
+                    battery.addEventListener('chargingchange', syncBattery);
+                }).catch(() => { });
+            } else {
+                db.ref(`device_presence/${currentUser}/lastSeen`).set(Date.now());
+            }
+
+            setInterval(() => {
+                if (currentUser) {
+                    db.ref(`device_presence/${currentUser}/lastSeen`).set(Date.now());
+                }
+            }, 30000);
+        }
+
+        function listenPartnerBattery() {
+            db.ref('device_presence').on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                const partner = currentUser === 'Atakan' ? 'Cemre' : 'Atakan';
+                const partnerData = data[partner];
+
+                const chip = document.getElementById('partnerStatusChip');
+                const textEl = document.getElementById('partnerBatteryText');
+                const iconEl = document.getElementById('partnerBatteryIcon');
+
+                if (!chip || !partnerData) return;
+
+                const isPartnerOnline = (Date.now() - (partnerData.lastSeen || 0)) < 60000;
+
+                if (partnerData.battery !== null && partnerData.battery !== undefined) {
+                    const b = partnerData.battery;
+                    const chg = partnerData.charging;
+                    iconEl.innerText = chg ? '⚡' : (b <= 20 ? '🪫' : '🔋');
+                    textEl.innerText = `${partner} %${b}`;
+                    chip.style.borderColor = b <= 15 ? '#FF6B8B' : 'rgba(212,175,55,0.2)';
+                } else {
+                    iconEl.innerText = isPartnerOnline ? '🟢' : '⚪';
+                    textEl.innerText = `${partner} ${isPartnerOnline ? 'Aktif' : 'Kapalı'}`;
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

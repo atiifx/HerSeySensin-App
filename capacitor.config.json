@@ -1,0 +1,10 @@
+{
+  "appId": "com.atakan.herseysen",
+  "appName": "Her Şey Sensin",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://herseysen.hehshdjjdjdjd.workers.dev",
+    "cleartext": true
+  }
+}

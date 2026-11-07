@@ -1,0 +1,16 @@
+{
+  "name": "Her Şey Sensin",
+  "short_name": "Her Şey Sensin",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B0B0E",
+  "theme_color": "#D4AF37",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
