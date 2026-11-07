@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,7 +45,7 @@ jobs:
 
   # 2. iOS IPA Derleme
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
