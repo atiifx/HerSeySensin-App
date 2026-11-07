@@ -43,7 +43,7 @@ jobs:
           name: HerSeySensin-Android-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-  # 2. iOS IPA Derleme
+  # 2. iOS IPA Derleme (SPM & Xcode Uyumlu)
   build-ios:
     runs-on: macos-latest
     steps:
@@ -64,8 +64,13 @@ jobs:
       - name: Build Unsigned IPA (Scarlet Uyumlu)
         run: |
           cd ios/App
+          BUILD_TARGET="-project App.xcodeproj"
+          if [ -d "App.xcworkspace" ]; then
+            BUILD_TARGET="-workspace App.xcworkspace"
+          fi
+
           xcodebuild clean build \
-            -workspace App.xcworkspace \
+            $BUILD_TARGET \
             -scheme App \
             -configuration Release \
             -destination 'generic/platform=iOS' \
