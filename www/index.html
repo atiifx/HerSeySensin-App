@@ -2959,9 +2959,8 @@
                 attributionControl: false
             }).setView([38.4237, 27.1428], 12);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                subdomains: ['a', 'b', 'c']
+            L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20
             }).addTo(memoryMap);
 
             markersLayer = L.layerGroup().addTo(memoryMap);

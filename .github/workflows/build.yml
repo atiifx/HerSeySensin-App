@@ -1,12 +1,39 @@
-name: Build Mobile Apps (APK & IPA)
+name: Build & Live Deploy
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
-  # 1. Android APK Derleme
+  # 1. Otomatik Canlı Web Yayını (Telefonların Anlık Güncellenmesi İçin)
+  deploy-web:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'www'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # 2. Android APK Derleme
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -43,7 +70,7 @@ jobs:
           name: HerSeySensin-Android-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-  # 2. iOS IPA Derleme (SPM & Xcode Uyumlu)
+  # 3. iOS IPA Derleme
   build-ios:
     runs-on: macos-latest
     steps:
@@ -61,7 +88,7 @@ jobs:
           chmod -R +x node_modules/.bin
           npx cap sync ios
 
-      - name: Build Unsigned IPA (Scarlet Uyumlu)
+      - name: Build Unsigned IPA
         run: |
           cd ios/App
           BUILD_TARGET="-project App.xcodeproj"
