@@ -2,6 +2,9 @@
 <html lang="tr">
 
 <head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Her Şey Sensin</title>
@@ -4274,6 +4277,21 @@
                 }
             });
         }
+        (function () {
+            const currentBuild = localStorage.getItem('app_build_time');
+            fetch('index.html?t=' + Date.now(), { cache: 'no-store' })
+                .then(response => response.text())
+                .then(html => {
+                    // Yeni bir değişiklik tespit edilirse ve eski önbellekteyse sayfayı sessizce yenile
+                    const match = html.match(/class="telepati-title">([^<]+)<\/div>/);
+                    const currentTitle = document.querySelector('.telepati-title')?.innerText;
+                    if (match && currentTitle && match[1].trim() !== currentTitle.trim()) {
+                        console.log("Yeni güncelleme bulundu, sayfa tazeleniyor...");
+                        window.location.reload(true);
+                    }
+                })
+                .catch(() => { });
+        })();
     </script>
 </body>
 
